@@ -1,0 +1,12 @@
+# Training requirements (Windows / Linux / Colab).
+# Install PyTorch FIRST using the command from https://pytorch.org/get-started/locally/
+# (pick your OS + CUDA version; CPU-only if you have no NVIDIA GPU), then:
+#     pip install -r requirements.txt
+#
+# Same ultralytics version as on the Raspberry Pi (pcbx_inspection/requirements.txt).
+ultralytics==8.4.218
+pyyaml
+ncnn          # needed by the NCNN export
+pnnx          # needed by the NCNN export
+matplotlib
+opencv-python
