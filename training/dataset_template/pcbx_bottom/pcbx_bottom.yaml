@@ -1,0 +1,9 @@
+# Portable version (no absolute path). train.py creates the resolved copy.
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: resistor
+  1: smd_capacitor
+  2: diode
+  3: ic8
