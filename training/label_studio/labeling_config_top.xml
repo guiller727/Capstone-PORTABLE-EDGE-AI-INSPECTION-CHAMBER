@@ -1,0 +1,18 @@
+<!--
+  Label Studio labeling config for the TOP side (paste into
+  Project > Settings > Labeling Interface > Code).
+  Label values MUST be spelled exactly like this (they become class names).
+  Hotkeys 1-7 speed up labelling.
+-->
+<View>
+  <Image name="image" value="$image" zoom="true" zoomControl="true" rotateControl="false"/>
+  <RectangleLabels name="label" toName="image" strokeWidth="2" opacity="0.25">
+    <Label value="electrolytic_cap" hotkey="1" background="#e53935"/>
+    <Label value="inductor"         hotkey="2" background="#8e24aa"/>
+    <Label value="transformer"      hotkey="3" background="#3949ab"/>
+    <Label value="varistor"         hotkey="4" background="#00897b"/>
+    <Label value="fuse"             hotkey="5" background="#fdd835"/>
+    <Label value="terminal_block"   hotkey="6" background="#6d4c41"/>
+    <Label value="connector"        hotkey="7" background="#fb8c00"/>
+  </RectangleLabels>
+</View>

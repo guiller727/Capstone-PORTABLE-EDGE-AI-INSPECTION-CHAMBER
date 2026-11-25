@@ -1,0 +1,14 @@
+<!--
+  Label Studio labeling config for the BOTTOM side (SMD parts).
+  Zoom in (mouse wheel) for small parts; draw the box tightly around the
+  component BODY including its solder terminations, not the pads.
+-->
+<View>
+  <Image name="image" value="$image" zoom="true" zoomControl="true" rotateControl="false"/>
+  <RectangleLabels name="label" toName="image" strokeWidth="1" opacity="0.2">
+    <Label value="resistor"      hotkey="1" background="#e53935"/>
+    <Label value="smd_capacitor" hotkey="2" background="#1e88e5"/>
+    <Label value="diode"         hotkey="3" background="#43a047"/>
+    <Label value="ic8"           hotkey="4" background="#fb8c00"/>
+  </RectangleLabels>
+</View>
