@@ -1,0 +1,27 @@
+# Training settings for the BOTTOM-side model (small SMD parts).
+# Used by train.py AND copied into the Colab notebook (keep them identical).
+imgsz: 1216         # = canvas width (1200 px at 10 px/mm) rounded up to a multiple of 32.
+                    # No downscaling: an 0805 part stays ~20 x 12 px.
+                    # (The PDF used 1024 -> 8.5 px/mm. Try both on validation if time allows.)
+epochs: 150
+patience: 30
+batch: 8            # 1216 px images need more GPU memory; use 4 if out of memory
+optimizer: auto
+seed: 0
+deterministic: true
+cache: true
+workers: 2
+plots: true
+fliplr: 0.0
+flipud: 0.0
+degrees: 3.0
+translate: 0.05
+scale: 0.2
+shear: 0.0
+perspective: 0.0
+mosaic: 1.0
+close_mosaic: 10
+mixup: 0.0
+hsv_h: 0.01
+hsv_s: 0.4
+hsv_v: 0.3

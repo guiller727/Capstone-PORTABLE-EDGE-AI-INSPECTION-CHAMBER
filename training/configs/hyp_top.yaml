@@ -1,0 +1,27 @@
+# Training settings for the TOP-side model (large through-hole parts).
+# Used by train.py AND copied into the Colab notebook (keep them identical).
+# Every key is a standard Ultralytics train argument.
+imgsz: 640          # canvas 1200x500 is resized so its long side = 640 (5.3 px/mm)
+epochs: 150         # upper limit; early stopping usually ends sooner
+patience: 30        # stop if val fitness has not improved for 30 epochs
+batch: 16           # lower to 8 if you get "CUDA out of memory"
+optimizer: auto
+seed: 0
+deterministic: true
+cache: true         # keep images in RAM (small dataset -> faster)
+workers: 2
+plots: true
+# --- augmentation (fixed chamber, board always aligned by software) ---
+fliplr: 0.0         # never mirror: real inspection images are never mirrored
+flipud: 0.0
+degrees: 3.0        # residual rotation after alignment is < 1 deg; 3 deg is a safe margin
+translate: 0.05
+scale: 0.2          # px/mm is fixed by the warp, so parts never change size much
+shear: 0.0
+perspective: 0.0
+mosaic: 1.0         # helps small datasets; switched off for the last 10 epochs
+close_mosaic: 10
+mixup: 0.0
+hsv_h: 0.01         # small hue change: colours of parts (e.g. capacitors) matter
+hsv_s: 0.4
+hsv_v: 0.3          # brightness change covers LED ageing / small exposure drift
