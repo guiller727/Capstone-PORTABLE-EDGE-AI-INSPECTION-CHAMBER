@@ -36,37 +36,40 @@ CANVAS_H = int(round((BOARD_HEIGHT_MM + 2 * CANVAS_MARGIN_MM) * PX_PER_MM))
 # --------------------------------------------------------------------------
 CAMERAS = {
     "top": {                       # sees Side A (through-hole parts)
-        "backend": "uvc",          # EMEET C60E. Change to "picamera2" if you
-                                   # switch to a 2nd CSI camera (recommended
-                                   # fallback, see docs).
-        "device": "auto",          # "auto" = /dev/v4l/by-id/*EMEET*, or a path
-        "match": "EMEET",          # text searched in /dev/v4l/by-id names
-        "width": 2560,             # TUNE in Stage 2 (2560x1440 or 3840x2160)
-        "height": 1440,
+        # FINAL CHOICE: Raspberry Pi Camera Module 3 (standard) on CAM1.
+        # (USB webcam option kept below: set backend "uvc" to use it instead.)
+        "backend": "picamera2",
+        "camera_num": 1,           # CAM1 port
+        "width": 2304,             # CM3 2x2-binned mode  # TUNE in Stage 2
+        "height": 1296,
+        "flush_frames": 2,         # frames thrown away after LED switch-on
+        "picamera2": {
+            "ExposureTime": 8000,      # us  # TUNE
+            "AnalogueGain": 1.0,
+            "AwbEnable": False,
+            "ColourGains": (1.8, 1.6), # (red, blue)  # TUNE with a grey card
+            "AfMode": 0,               # 0 = manual focus
+            "LensPosition": 8.0,       # dioptres = 1 / distance_in_m  # TUNE
+        },
+        # --- used only if backend == "uvc" (USB webcam alternative) ---
+        "device": "auto",          # "auto" = /dev/v4l/by-id/*<match>*, or a path
+        "match": "EMEET",
         "fourcc": "MJPG",
         "fps": 30,
-        "flush_frames": 5,         # frames thrown away after LED switch-on
-        # v4l2-ctl controls applied at start-up. Names differ between
-        # webcams: run  v4l2-ctl -d <dev> --list-ctrls  and edit. # TUNE
         "v4l2_controls": {
-            "auto_exposure": 1,                 # 1 = manual
-            "exposure_time_absolute": 150,      # units of 100 us  # TUNE
-            "gain": 0,
-            "white_balance_automatic": 0,
-            "white_balance_temperature": 5000,  # TUNE
-            "focus_automatic_continuous": 0,
-            "focus_absolute": 300,              # TUNE (sharpest value)
-            "power_line_frequency": 2,          # 60 Hz (Philippines)
+            "auto_exposure": 1, "exposure_time_absolute": 150, "gain": 0,
+            "white_balance_automatic": 0, "white_balance_temperature": 5000,
+            "focus_automatic_continuous": 0, "focus_absolute": 300,
+            "power_line_frequency": 2,
         },
-        "picamera2": {},           # used only if backend == "picamera2"
         "calibration_file": "top_camera.json",
         "simulate_folder": "sim_images/top",
     },
     "bottom": {                    # sees Side B (SMD parts)
         "backend": "picamera2",
         "camera_num": 0,           # 0 = CAM0 port, 1 = CAM1 port
-        # 2x2-binned modes are sharper per pixel, faster and use less RAM.
-        # Camera Module 3: (2304, 1296) | Arducam IMX519: (2328, 1748)
+        # FINAL CHOICE: Raspberry Pi Camera Module 3 (standard) on CAM0.
+        # 2x2-binned mode is sharper per pixel, faster and uses less RAM.
         # Use the full mode (4608x2592 / 4656x3496) only if you need >16 px/mm.
         "width": 2304,             # TUNE in Stage 2
         "height": 1296,
