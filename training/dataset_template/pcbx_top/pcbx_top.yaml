@@ -1,0 +1,12 @@
+# Portable version (no absolute path). train.py creates the resolved copy.
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: electrolytic_cap
+  1: inductor
+  2: transformer
+  3: varistor
+  4: fuse
+  5: terminal_block
+  6: connector
