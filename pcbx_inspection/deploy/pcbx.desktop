@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=PCB X Inspection
+Comment=Start the PCB X inspection appliance after login
+# Edit the path if you cloned the project somewhere else
+Exec=/home/pi/PCBX_Capstone/pcbx_inspection/run_pcbx.sh
+Terminal=false
+X-GNOME-Autostart-enabled=true

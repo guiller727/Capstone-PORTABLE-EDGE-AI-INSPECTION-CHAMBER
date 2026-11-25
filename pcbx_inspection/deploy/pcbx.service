@@ -1,0 +1,24 @@
+# deploy/pcbx.service - ALTERNATIVE to desktop autostart: a systemd *user*
+# service that starts the GUI inside the logged-in desktop session.
+#
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   cp deploy/pcbx.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now pcbx.service
+#   journalctl --user -u pcbx -f          # watch the log
+# Requires desktop auto-login (raspi-config > System > Boot / Auto Login).
+[Unit]
+Description=PCB X inspection appliance
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/PCBX_Capstone/pcbx_inspection
+ExecStart=%h/pcbx-venv/bin/python main.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

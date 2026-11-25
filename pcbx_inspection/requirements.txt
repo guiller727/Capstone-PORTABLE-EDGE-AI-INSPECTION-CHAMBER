@@ -1,0 +1,16 @@
+# Raspberry Pi 5 runtime requirements (Python packages from pip).
+# Do NOT install this file alone - run ./install_pi.sh, which also
+#   * installs apt packages (picamera2, tkinter, v4l-utils, gpiozero/lgpio)
+#   * creates the venv with --system-site-packages (needed for picamera2)
+#   * pins numpy to the system version (prevents picamera2 binary errors)
+#   * installs the CPU-only PyTorch build first
+#
+# Keep the ultralytics version IDENTICAL to the one used for training/export
+# (training/requirements.txt). Update both together.
+ultralytics==8.4.218
+ncnn
+spidev
+psutil
+scipy
+pillow
+pytest
