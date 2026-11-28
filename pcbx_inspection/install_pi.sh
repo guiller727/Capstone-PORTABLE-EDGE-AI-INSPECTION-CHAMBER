@@ -47,14 +47,14 @@ echo "== 7/7 Self-test imports"
 python - <<'PY'
 import importlib
 for m in ["numpy", "cv2", "torch", "ultralytics", "ncnn", "scipy", "PIL.ImageTk",
-          "tkinter", "spidev", "gpiozero", "picamera2"]:
+          "tkinter", "spidev", "gpiozero", "picamera2", "yaml"]:
     try:
         mod = importlib.import_module(m)
         print(f"  OK   {m:12} {getattr(mod, '__version__', '')}")
     except Exception as e:
         print(f"  FAIL {m:12} {e}")
 PY
-mkdir -p "$APP_DIR/logs" "$APP_DIR/models" "$APP_DIR/references/calibration"
+mkdir -p "$APP_DIR/logs" "$APP_DIR/models/pcb_x" "$APP_DIR/references/calibration" "$APP_DIR/config"
 chmod +x "$APP_DIR/run_pcbx.sh"
 # write the autostart entry with THIS machine's path (enable it in Stage 14)
 sed "s#^Exec=.*#Exec=$APP_DIR/run_pcbx.sh#" "$APP_DIR/deploy/pcbx.desktop" \
@@ -64,11 +64,11 @@ cat <<EOF
 
 Done. Next steps:
   * Reboot once (sudo reboot) so SPI is active.
-  * Camera check:   rpicam-hello --list-cameras     and    v4l2-ctl --list-devices
-  * Arducam IMX519 AUTOFOCUS model only: follow Arducam's guide (dtoverlay=imx519
-    in /boot/firmware/config.txt and their libcamera packages). Camera Module 3
-    needs nothing extra.
-  * Run the unit tests:  source $VENV/bin/activate && cd $APP_DIR && python -m pytest -q tests
+  * Camera check:   rpicam-hello --list-cameras   (expect two imx708 cameras)
+                    python tools/test_cameras.py --list
+  * Camera Module 3 needs no extra driver or config.txt change (auto-detected).
+  * Run the tests:  source $VENV/bin/activate && cd $APP_DIR && python -m pytest -q tests
+  * Check the PCB profile/model:  python tools/check_profile.py
   * Start manually:      $APP_DIR/run_pcbx.sh
   * Autostart at boot:   see docs/C_Pi_Software_Roadmap.md (Stage 14)
 EOF

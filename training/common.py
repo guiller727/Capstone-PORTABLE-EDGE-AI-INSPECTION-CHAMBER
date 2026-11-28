@@ -11,10 +11,15 @@ import yaml
 HERE = Path(__file__).resolve().parent
 
 # Canonical class lists. The ORDER defines the class IDs (0, 1, 2, ...).
-# Must match pcbx_inspection/config.py MODELS[side]["classes"].
+# Must match pcbx_inspection/models/<profile>/metadata.json -> sides.<side>.classes
+#   "top"    = FRONT = Side A (through-hole parts)  -> dataset folder pcbx_top
+#   "bottom" = BACK  = Side B (SMD parts)            -> dataset folder pcbx_bottom
+# V2 change (from the real PCB X photos): the front has an X2 film capacitor (C13)
+# and a Y ceramic disc capacitor (C10) that had no class in V1, and no terminal
+# block (PWR1/CN1 are connectors). 15 front parts / 21 back parts as in the PDF.
 CLASSES = {
-    "top": ["electrolytic_cap", "inductor", "transformer", "varistor",
-            "fuse", "terminal_block", "connector"],
+    "top": ["electrolytic_cap", "film_capacitor", "ceramic_capacitor", "varistor", "fuse",
+            "inductor", "transformer", "connector"],
     "bottom": ["resistor", "smd_capacitor", "diode", "ic8"],
 }
 

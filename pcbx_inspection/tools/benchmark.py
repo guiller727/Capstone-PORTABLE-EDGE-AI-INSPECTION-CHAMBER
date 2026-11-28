@@ -42,22 +42,28 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-n", type=int, default=50)
     ap.add_argument("--full", type=int, default=0, help="number of full inspections")
+    ap.add_argument("--compare-pt", action="store_true",
+                    help="also time best.pt (PyTorch) to compare with NCNN")
     args = ap.parse_args()
     proc = psutil.Process()
     print("Start:", pi_status(), f"RSS {proc.memory_info().rss / 1e6:.0f} MB")
     from vision.component_detection import Detector
+    from inspection.profile import Profile
     from inspection.runner import make_canvas
-    geo = make_canvas()
+    prof = Profile(C.MODELS_DIR, C.ACTIVE_PROFILE)
+    geo = make_canvas(prof)
     img = (np.random.rand(geo.h, geo.w, 3) * 255).astype(np.uint8)
-    for side in ("top", "bottom"):
-        m = C.MODELS[side]
-        det = Detector(C.MODELS_DIR / m["path"], m["imgsz"], m["classes"])
+    runs = [(s, True) for s in prof.sides()] + ([(s, False) for s in prof.sides()]
+                                                if args.compare_pt else [])
+    for side, ncnn in runs:
+        path, fmt, imgsz = prof.model_info(side, prefer_ncnn=ncnn)
+        det = Detector(path, imgsz, prof.classes(side))
         det.warmup((geo.h, geo.w, 3))
         times = []
         for _ in range(args.n):
             det.detect(img, conf=C.T_LOW)
             times.append(det.last_ms)
-        print(f"{side:6} imgsz={m['imgsz']}: mean {st.mean(times):.1f} ms  "
+        print(f"{side:6} {fmt:5} imgsz={imgsz}: mean {st.mean(times):.1f} ms  "
               f"p95 {pct(times, 95):.1f} ms  max {max(times):.1f} ms")
     print("After models:", pi_status(), f"RSS {proc.memory_info().rss / 1e6:.0f} MB, "
           f"system used {psutil.virtual_memory().used / 1e9:.2f} GB of "

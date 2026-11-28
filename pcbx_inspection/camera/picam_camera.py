@@ -18,6 +18,20 @@ from .base import BaseCamera, CameraError
 log = logging.getLogger(__name__)
 
 
+def list_csi_cameras():
+    """Cameras libcamera can see, e.g. [{'Model': 'imx708', 'Num': 0, ...}].
+
+    Note: Picamera2 numbers cameras in the order libcamera reports them. With
+    two Camera Module 3 units on a Pi 5 this is normally CAM0 = 0, CAM1 = 1;
+    confirm with  rpicam-hello --list-cameras  and tools/test_cameras.py --list.
+    """
+    try:
+        from picamera2 import Picamera2
+    except ImportError:
+        return []
+    return list(Picamera2.global_camera_info())
+
+
 class PiCamera(BaseCamera):
     def open(self) -> None:
         try:
@@ -29,6 +43,16 @@ class PiCamera(BaseCamera):
                 "--system-site-packages") from exc
 
         num = int(self.cfg.get("camera_num", 0))
+        info = list_csi_cameras()
+        if num >= len(info):
+            raise CameraError(
+                f"{self.name}: CSI camera {num} not detected ({len(info)} camera(s) found). "
+                "Check the ribbon cable (metal contacts towards the Ethernet port on "
+                "the Pi 5) and run: rpicam-hello --list-cameras")
+        model = str(info[num].get("Model", "?"))
+        if "imx708" not in model.lower():
+            log.warning("%s: camera %d is %s, expected imx708 (Camera Module 3)",
+                        self.name, num, model)
         try:
             self.cam = Picamera2(num)
         except Exception as exc:  # pragma: no cover
@@ -58,11 +82,11 @@ class PiCamera(BaseCamera):
         self.is_open = True
         log.info("PiCamera %s opened at %s with %s", num, size, controls)
 
-    def capture(self) -> np.ndarray:
+    def capture(self, fresh: bool = True) -> np.ndarray:
         if not self.is_open:
             raise CameraError(f"{self.name} camera is not open")
         # Throw away frames that may have started before the LEDs were on.
-        for _ in range(int(self.cfg.get("flush_frames", 2))):
+        for _ in range(int(self.cfg.get("flush_frames", 2)) if fresh else 0):
             self.cam.capture_array("main")
         img = self.cam.capture_array("main")
         if img is None or img.size == 0:

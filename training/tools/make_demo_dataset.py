@@ -21,7 +21,7 @@ import numpy as np  # noqa: E402
 from common import CANVAS_H, CANVAS_W, CLASSES, HERE  # noqa: E402
 
 COL = [(30, 30, 30), (200, 120, 40), (40, 40, 200), (180, 180, 180), (40, 200, 200),
-       (200, 40, 200), (90, 160, 60)]
+       (200, 40, 200), (90, 160, 60), (120, 60, 160)]
 
 
 def main():
@@ -53,7 +53,7 @@ def main():
                     if rng.random() < 0.05:           # 5 % "missing part" boards
                         continue
                     dx, dy = rng.randint(-3, 3), rng.randint(-3, 3)
-                    cv2.rectangle(img, (x + dx, y + dy), (x + dx + w, y + dy + h), COL[c], -1)
+                    cv2.rectangle(img, (x + dx, y + dy), (x + dx + w, y + dy + h), COL[c % len(COL)], -1)
                     cx, cy = (x + dx + w / 2) / CANVAS_W, (y + dy + h / 2) / CANVAS_H
                     lines.append(f"{ls_order.index(names[c])} {cx:.6f} {cy:.6f} "
                                  f"{w / CANVAS_W:.6f} {h / CANVAS_H:.6f}")

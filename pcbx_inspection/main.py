@@ -3,9 +3,11 @@
 main.py - start the PCB X inspection appliance.
 
     python main.py              # real hardware (Raspberry Pi)
-    python main.py --simulate   # no hardware: images from sim_images/top|bottom,
+    python main.py --simulate   # no hardware: images from sim_images/upper|lower,
                                 # dummy LEDs, no GPIO (works on Windows too)
     python main.py --windowed   # not full screen (for development)
+    python main.py --mode flip  # one camera, operator flips the board
+    python main.py --profile pcb_x
 
 Run from the project folder (the folder that contains this file).
 """
@@ -27,7 +29,13 @@ def main():
     ap.add_argument("--simulate", action="store_true", help="run without hardware")
     ap.add_argument("--windowed", action="store_true", help="do not use full screen")
     ap.add_argument("--debug", action="store_true")
+    ap.add_argument("--mode", choices=["dual", "flip"], help="override INSPECTION_MODE")
+    ap.add_argument("--profile", help="override ACTIVE_PROFILE (folder in models/)")
     args = ap.parse_args()
+    if args.mode:
+        C.INSPECTION_MODE = args.mode
+    if args.profile:
+        C.ACTIVE_PROFILE = args.profile
 
     setup_app_logging(C.LOGS_DIR, logging.DEBUG if args.debug else logging.INFO)
     if args.windowed:
@@ -41,7 +49,7 @@ def main():
 
     inputs = Inputs(C.START_BUTTON_GPIO, C.DOOR_SWITCH_GPIO, C.STATUS_LED_GPIO,
                     simulate=simulate)
-    system = InspectionSystem(simulate=simulate)
+    system = InspectionSystem(simulate=simulate, profile_name=C.ACTIVE_PROFILE)
     app = App(system, inputs)
     try:
         app.run()

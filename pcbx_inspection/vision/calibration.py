@@ -58,8 +58,14 @@ class Undistorter:
     def __init__(self, calib_path: Path):
         self.calib = None
         self._maps = {}
+        self.extra = {}
         if calib_path and Path(calib_path).exists():
-            self.calib = json.loads(Path(calib_path).read_text())
+            data = json.loads(Path(calib_path).read_text())
+            self.extra = {k: v for k, v in data.items() if k not in ("K", "dist")}
+            if "K" not in data:            # file holds only e.g. a fixed homography
+                log.warning("%s has no lens calibration - images are NOT undistorted", calib_path)
+                return
+            self.calib = data
             self.K = np.array(self.calib["K"], dtype=np.float64)
             self.dist = np.array(self.calib["dist"], dtype=np.float64)
             log.info("Loaded calibration %s (RMS %.3f px)", calib_path,

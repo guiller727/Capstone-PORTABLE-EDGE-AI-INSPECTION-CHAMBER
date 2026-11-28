@@ -1,4 +1,21 @@
-# Package B — AI training (YOLOv8n baseline, YOLO26n optional)
+# Package B — AI training (YOLOv8n baseline, YOLO26n optional) — V2
+
+**V2 in one box**
+* Dataset names are unchanged: `top` = **FRONT = Side A** (through-hole parts),
+  `bottom` = **BACK = Side B** (SMD parts). Folders `datasets/pcbx_top`,
+  `datasets/pcbx_bottom`, scripts and notebook work as before.
+* **Front class list changed** to match the real board: `electrolytic_cap,
+  film_capacitor, ceramic_capacitor, varistor, fuse, inductor, transformer,
+  connector` (C13 X2 film cap and C10 Y ceramic disc had no class; there is no
+  terminal block). Back unchanged. Counts: 15 front / 21 back parts.
+* `capture_dataset.py` (on the Pi) now sorts canvases into `canvas/top` and
+  `canvas/bottom` by **identifying** the side, so flipped/rotated insertions
+  land in the right dataset.
+* Install trained models straight into the PCB profile:
+  `python export.py --side top --weights ... --profile-dir ../pcbx_inspection/models/pcb_x`
+* Beginner guides: `docs/DATASET_LABELING.md`, `docs/MODEL_TRAINING.md`,
+  `docs/MODEL_INTEGRATION.md`.
+
 
 Everything needed to go from **chamber photos → labelled dataset → trained
 models → NCNN files on the Raspberry Pi**. The only files you supply are your
@@ -37,8 +54,8 @@ feeds to YOLO** (1200 × 500 px, 10 px/mm, CLAHE applied). Training and
 inspection images are then produced by the same code, as the PDF requires.
 
 ```
-Pi: tools/capture_dataset.py  ──►  dataset_capture/canvas/top/*.jpg
-                                    dataset_capture/canvas/bottom/*.jpg
+Pi: tools/capture_dataset.py  ──►  dataset_capture/canvas/top/*.jpg      (FRONT, identified)
+                                    dataset_capture/canvas/bottom/*.jpg   (BACK, identified)
         │  (copy to your PC)
         ▼
 Label Studio: 2 projects (top, bottom) ──► Export "YOLO with Images" (zip)
@@ -175,9 +192,10 @@ both in Chapter 4 — that comparison is a good contribution.
 2. Open `PCBX_YOLO_Training.ipynb` in Colab (*File → Upload notebook*), select
    *T4 GPU*, run all cells. Settings are only in cell 2.
 3. Cell 16 downloads `pcbx_models_<model>_<date>.zip` (also saved in Drive):
-   `models/top_best_ncnn_model/`, `models/bottom_best_ncnn_model/`, `best.pt`
-   files, and the evidence (curves, confusion matrices, metrics JSON).
-4. Copy the two model folders to `pcbx_inspection/models/` on the Pi.
+   `pcb_x/top/best.pt`, `pcb_x/top/best_ncnn_model/`, the same for `bottom`,
+   and the evidence (curves, confusion matrices, metrics JSON).
+4. Copy `pcb_x/top` and `pcb_x/bottom` into `pcbx_inspection/models/pcb_x/` on
+   the Pi and run `python tools/check_profile.py` (docs/MODEL_INTEGRATION.md).
 
 ## 6. Local training on Windows (same files, same dataset folder)
 
@@ -200,7 +218,7 @@ python tools/check_dataset.py --side top
 python train.py --side top
 python train.py --side bottom
 python validate.py --side top --weights weights_out/top_yolov8n_best.pt
-python export.py  --side top --weights weights_out/top_yolov8n_best.pt
+python export.py  --side top --weights weights_out/top_yolov8n_best.pt --profile-dir ..\pcbx_inspection\models\pcb_x
 ```
 
 **Without an NVIDIA GPU:** install the CPU build

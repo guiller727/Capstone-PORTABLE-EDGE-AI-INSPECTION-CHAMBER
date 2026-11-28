@@ -33,13 +33,14 @@ def _label(img, text, org, color):
 def draw_side(canvas, side_result, ppm, margin_mm):
     img = canvas.copy()
     for c in side_result.components:
-        if c.status == "MISSING":
+        if c.status in ("MISSING", "MISSING_OPTIONAL"):
+            col = RED if c.status == "MISSING" else ORANGE
             w = (c.ref_w_mm or 2.0) * ppm
             h = (c.ref_h_mm or 2.0) * ppm
             cx, cy = (c.ref_x_mm + margin_mm) * ppm, (c.ref_y_mm + margin_mm) * ppm
             p1, p2 = (cx - w / 2, cy - h / 2), (cx + w / 2, cy + h / 2)
-            _dashed_rect(img, p1, p2, RED)
-            _label(img, f"{c.id} MISSING", (p1[0], p1[1] - 4), RED)
+            _dashed_rect(img, p1, p2, col)
+            _label(img, f"{c.id} MISSING", (p1[0], p1[1] - 4), col)
             continue
         x1, y1, x2, y2 = map(int, c.box_px)
         if c.status == "OK":
@@ -52,9 +53,10 @@ def draw_side(canvas, side_result, ppm, margin_mm):
             # line from expected to detected centre
             ex, ey = (c.ref_x_mm + margin_mm) * ppm, (c.ref_y_mm + margin_mm) * ppm
             cv2.line(img, (int(ex), int(ey)), ((x1 + x2) // 2, (y1 + y2) // 2), RED, 1)
-        else:  # UNCERTAIN
+        else:  # UNCERTAIN / AMBIGUOUS
             cv2.rectangle(img, (x1, y1), (x2, y2), ORANGE, 2)
-            _label(img, f"{c.id} ?{c.conf:.2f}", (x1, y1 - 4), ORANGE)
+            tag = "ambiguous" if c.status == "AMBIGUOUS" else f"?{c.conf:.2f}"
+            _label(img, f"{c.id} {tag}", (x1, y1 - 4), ORANGE)
     for e in side_result.extras:
         if e.status == "EXTRA":
             x1, y1, x2, y2 = map(int, e.box_px)
@@ -63,10 +65,17 @@ def draw_side(canvas, side_result, ppm, margin_mm):
     return img
 
 
-def message_image(text, size=(1200, 500), color=(0, 140, 255)):
+def message_image(text, size=(1200, 500), color=(0, 140, 255), wrap=None, scale=1.0):
+    """Grey panel with (optionally word-wrapped) text - used for prompts/REVIEW reasons."""
+    import textwrap
+    lines = []
+    for para in text.split("\n"):
+        lines += textwrap.wrap(para, wrap) if (wrap and para) else [para]
     img = np.full((size[1], size[0], 3), 40, np.uint8)
-    y = size[1] // 2 - 20 * (text.count("\n"))
-    for line in text.split("\n"):
-        cv2.putText(img, line, (30, y), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color, 2, cv2.LINE_AA)
-        y += 45
+    step = int(45 * scale)
+    y = max(int(35 * scale), size[1] // 2 - step * len(lines) // 2)
+    for line in lines:
+        cv2.putText(img, line, (30, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color,
+                    max(1, int(2 * scale)), cv2.LINE_AA)
+        y += step
     return img

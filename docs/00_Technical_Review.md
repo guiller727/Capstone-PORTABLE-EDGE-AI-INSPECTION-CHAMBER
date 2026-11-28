@@ -1,5 +1,15 @@
 # Technical review and implementation guide — PCB X Edge-AI Inspection Chamber
 
+> **V2 note.** This is the V1 review, kept for traceability. Superseded by
+> `docs/01_V2_Evaluation_and_Changes.md` where they differ: cameras are now
+> **2 × Camera Module 3** (EMEET/Arducam dropped), **32 GB** microSD is
+> sufficient, sides are **identified from the board's markings** (SHARP /
+> part number on the front, T1 block on the back) instead of fixed per camera,
+> the front class list changed (film and ceramic capacitor added, terminal
+> block removed), golden references and models live in `models/pcb_x/`, and
+> "side not identified / orientation ambiguous / capture unusable" now give
+> **REVIEW**. Test count is now 39 (+1 GUI test).
+
 Reviewed document: *PCB X System Workflow and Training Guide* (8 pages).
 This review answers Parts 1–8 of your request. Detailed material lives in
 the package documents:

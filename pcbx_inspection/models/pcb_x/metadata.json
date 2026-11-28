@@ -1,0 +1,67 @@
+{
+  "schema_version": 2,
+  "profile": "pcb_x",
+  "board_name": "PCB X",
+  "description": "Sharp power-supply board QPWBP0335PFZZ ('MTI 5V PWR'), 115 x 45 mm. Front = Side A (through-hole parts), back = Side B (SMD parts).",
+  "board_size_mm": [
+    115.0,
+    45.0
+  ],
+  "canvas": {
+    "px_per_mm": 10.0,
+    "margin_mm": 2.5
+  },
+  "files": {
+    "golden_reference": "golden_reference.json",
+    "board_profile": "board_profile.json"
+  },
+  "sides": {
+    "top": {
+      "label": "FRONT - Side A",
+      "classes": [
+        "electrolytic_cap",
+        "film_capacitor",
+        "ceramic_capacitor",
+        "varistor",
+        "fuse",
+        "inductor",
+        "transformer",
+        "connector"
+      ],
+      "model": {
+        "ncnn": "top/best_ncnn_model",
+        "pt": "top/best.pt",
+        "imgsz": [
+          288,
+          640
+        ],
+        "pt_imgsz": 640
+      }
+    },
+    "bottom": {
+      "label": "BACK - Side B",
+      "classes": [
+        "resistor",
+        "smd_capacitor",
+        "diode",
+        "ic8"
+      ],
+      "model": {
+        "ncnn": "bottom/best_ncnn_model",
+        "pt": "bottom/best.pt",
+        "imgsz": [
+          512,
+          1216
+        ],
+        "pt_imgsz": 1216
+      }
+    }
+  },
+  "training": {
+    "ultralytics": "8.4.218",
+    "base_model": "yolov8n.pt",
+    "trained_on": null,
+    "dataset": null,
+    "notes": "Fill in after training (export.py --profile-dir does it)."
+  }
+}

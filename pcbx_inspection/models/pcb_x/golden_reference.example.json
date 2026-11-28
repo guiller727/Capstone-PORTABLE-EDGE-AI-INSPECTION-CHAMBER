@@ -1,0 +1,211 @@
+{
+  "schema_version": 2,
+  "profile": "pcb_x",
+  "board": "PCB X",
+  "board_size_mm": [
+    115.0,
+    45.0
+  ],
+  "canvas": {
+    "px_per_mm": 10.0,
+    "margin_mm": 2.5
+  },
+  "coordinate_system": "mm on the board; origin = top-left corner of the identified, orientation-corrected side; x right, y down",
+  "_comment": "EXAMPLE ONLY - component positions are rough estimates from a photo, to show the format. Build the real file with tools/build_golden_reference.py and save it as golden_reference.json.",
+  "revision": 0,
+  "sides": {
+    "top": {
+      "label": "FRONT - Side A",
+      "thresholds": {
+        "t_low": 0.25,
+        "t_high": 0.6
+      },
+      "default_tolerance": {
+        "tol_mm": 1.0,
+        "tol_x_mm": null,
+        "tol_y_mm": null
+      },
+      "class_tolerance": {
+        "transformer": {
+          "tol_mm": 1.5
+        },
+        "connector": {
+          "tol_mm": 1.5
+        }
+      },
+      "components": [
+        {
+          "id": "F1",
+          "class": "fuse",
+          "x_mm": 17.0,
+          "y_mm": 6.0,
+          "w_mm": 22.0,
+          "h_mm": 6.0
+        },
+        {
+          "id": "C13",
+          "class": "film_capacitor",
+          "x_mm": 9.0,
+          "y_mm": 19.0,
+          "w_mm": 13.0,
+          "h_mm": 10.0
+        },
+        {
+          "id": "VAR1",
+          "class": "varistor",
+          "x_mm": 15.5,
+          "y_mm": 20.0,
+          "w_mm": 6.0,
+          "h_mm": 9.0
+        },
+        {
+          "id": "L1",
+          "class": "inductor",
+          "x_mm": 25.0,
+          "y_mm": 21.0,
+          "w_mm": 12.0,
+          "h_mm": 15.0
+        },
+        {
+          "id": "L2",
+          "class": "inductor",
+          "x_mm": 34.5,
+          "y_mm": 4.5,
+          "w_mm": 7.0,
+          "h_mm": 7.0
+        },
+        {
+          "id": "C1",
+          "class": "electrolytic_cap",
+          "x_mm": 36.0,
+          "y_mm": 17.0,
+          "w_mm": 9.0,
+          "h_mm": 10.0
+        },
+        {
+          "id": "C2",
+          "class": "electrolytic_cap",
+          "x_mm": 44.0,
+          "y_mm": 11.0,
+          "w_mm": 9.0,
+          "h_mm": 10.0
+        },
+        {
+          "id": "C3",
+          "class": "electrolytic_cap",
+          "x_mm": 41.0,
+          "y_mm": 34.0,
+          "w_mm": 6.0,
+          "h_mm": 6.0
+        },
+        {
+          "id": "T1",
+          "class": "transformer",
+          "x_mm": 66.0,
+          "y_mm": 20.0,
+          "w_mm": 25.0,
+          "h_mm": 24.0
+        },
+        {
+          "id": "C10",
+          "class": "ceramic_capacitor",
+          "x_mm": 71.0,
+          "y_mm": 37.0,
+          "w_mm": 10.0,
+          "h_mm": 5.0
+        },
+        {
+          "id": "C6",
+          "class": "electrolytic_cap",
+          "x_mm": 96.0,
+          "y_mm": 9.0,
+          "w_mm": 10.0,
+          "h_mm": 12.0
+        },
+        {
+          "id": "C7",
+          "class": "electrolytic_cap",
+          "x_mm": 104.0,
+          "y_mm": 17.0,
+          "w_mm": 10.0,
+          "h_mm": 12.0
+        },
+        {
+          "id": "C12",
+          "class": "electrolytic_cap",
+          "x_mm": 100.0,
+          "y_mm": 35.0,
+          "w_mm": 6.0,
+          "h_mm": 7.0
+        },
+        {
+          "id": "CN1",
+          "class": "connector",
+          "x_mm": 111.0,
+          "y_mm": 25.0,
+          "w_mm": 4.0,
+          "h_mm": 10.0
+        },
+        {
+          "id": "PWR1",
+          "class": "connector",
+          "x_mm": 13.0,
+          "y_mm": 39.0,
+          "w_mm": 12.0,
+          "h_mm": 6.0
+        }
+      ]
+    },
+    "bottom": {
+      "label": "BACK - Side B",
+      "thresholds": {
+        "t_low": 0.25,
+        "t_high": 0.6
+      },
+      "default_tolerance": {
+        "tol_mm": 0.5,
+        "tol_x_mm": null,
+        "tol_y_mm": null
+      },
+      "class_tolerance": {
+        "ic8": {
+          "tol_mm": 0.6
+        }
+      },
+      "components": [
+        {
+          "id": "IC1",
+          "class": "ic8",
+          "x_mm": 49.0,
+          "y_mm": 22.5,
+          "w_mm": 5.0,
+          "h_mm": 4.0
+        },
+        {
+          "id": "R1",
+          "class": "resistor",
+          "x_mm": 59.0,
+          "y_mm": 12.5,
+          "w_mm": 3.0,
+          "h_mm": 1.5
+        },
+        {
+          "id": "D1",
+          "class": "diode",
+          "x_mm": 76.5,
+          "y_mm": 14.0,
+          "w_mm": 2.0,
+          "h_mm": 4.5
+        },
+        {
+          "id": "D8",
+          "class": "diode",
+          "x_mm": 15.0,
+          "y_mm": 28.0,
+          "w_mm": 6.5,
+          "h_mm": 7.0
+        }
+      ]
+    }
+  }
+}

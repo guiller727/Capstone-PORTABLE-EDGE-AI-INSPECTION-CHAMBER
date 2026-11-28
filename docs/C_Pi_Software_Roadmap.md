@@ -1,4 +1,11 @@
-# Package C — Raspberry Pi software: architecture, roadmap, deployment
+# Package C — Raspberry Pi software: architecture, roadmap, deployment (V2)
+
+V2 summary: two Camera Module 3 units named by position (`upper` CAM1,
+`lower` CAM0); every image is identified as FRONT or BACK from the board's
+markings; dual mode (one insertion, both cameras) or flip mode (one camera,
+operator flips); PCB profile folder `models/pcb_x/`; GUI Settings and History.
+Stage 7 now ends with `tools/check_profile.py`; Stage 9 writes into
+`models/pcb_x/golden_reference.json`.
 
 The complete source is in `pcbx_inspection/`. This document explains how it is
 organised, in which order to bring it up, how to check each stage, and how
@@ -31,35 +38,40 @@ VS Code: *Remote-SSH: Connect to Host* → `user@<pi-ip>`.
 
 ```
 pcbx_inspection/
-├── main.py                    entry point (argparse, logging, starts GUI)
-├── config.py                  ALL settings (cameras, LEDs, thresholds, paths)
+├── main.py                    entry point (--simulate, --windowed, --mode dual|flip, --profile)
+├── config.py                  system settings: cameras (upper/lower), LEDs, GPIO, pipeline defaults
+├── config/settings.json       values saved from the GUI (validated whitelist)            [V2]
 ├── camera/                    one interface, three back-ends
-│   ├── base.py                BaseCamera: open() / capture() / close()
-│   ├── picam_camera.py        CSI camera via Picamera2 (CM3 / IMX519)
-│   ├── uvc_camera.py          USB webcam via OpenCV+V4L2, v4l2-ctl locking, frame flushing
-│   └── file_camera.py         images from a folder (--simulate)
-├── lighting/led_controller.py WS2812B over SPI (own encoder) | GPIO MOSFET | dummy
+│   ├── base.py                BaseCamera: open() / capture(fresh) / close()
+│   ├── picam_camera.py        Camera Module 3 via Picamera2 (detects IMX708)            [V2 M]
+│   ├── uvc_camera.py          optional USB-webcam fallback
+│   └── file_camera.py         images from a folder (--simulate, tests)
+├── lighting/led_controller.py WS2812B over SPI | GPIO MOSFET | dummy
 ├── hardware/inputs.py         START button, drawer switch, status LED (gpiozero)
 ├── vision/
-│   ├── calibration.py         checkerboard calibration, cached undistortion maps
-│   ├── quality.py             blur / exposure check before inference
-│   ├── board_alignment.py     outline → orientation/side templates → fiducial refinement → canvas
-│   ├── fiducials.py           OpenCV fiducial detection, similarity fit
+│   ├── calibration.py         per-camera lens calibration (+ optional fixed homography)
+│   ├── quality.py             blur / exposure check
+│   ├── identification.py      FRONT/BACK identification from markings, 0/180 deg      [V2 N]
+│   ├── board_alignment.py     outline -> identification -> orientation -> holes -> canvas [V2 M]
+│   ├── fiducials.py           mounting-hole detection, similarity fit
 │   ├── preprocessing.py       CLAHE / gamma (shared with dataset capture)
-│   ├── component_detection.py YOLO wrapper (NCNN / .pt), class-list check
-│   └── coordinate_extraction.py  canvas px ↔ board mm
+│   ├── component_detection.py YOLO wrapper (.pt / NCNN), validated loading              [V2 M]
+│   └── coordinate_extraction.py  canvas px <-> board mm
 ├── inspection/
-│   ├── golden_reference.py    load/save/build golden_<side>.json
+│   ├── profile.py             PCB profile folder: metadata, model files, readiness     [V2 N]
+│   ├── golden_reference.py    schema v2, tolerances, validation, safe save + backups   [V2 M]
 │   ├── component_matching.py  Hungarian assignment (one-to-one)
-│   ├── decision_engine.py     rules R1–R8, S1 → PASS / FAIL / REVIEW
-│   └── runner.py              the inspection sequence (capture → … → log)
-├── gui/interface.py           Tkinter operator screen (worker thread + queue)
-├── gui/overlay.py             coloured boxes (green/red/red-dashed/orange)
-├── storage/image_logger.py    background JPEG writer
-├── storage/result_logger.py   results.csv + result.json + rotating app.log
-├── tools/                     stage tests and setup utilities (see C3)
-├── tests/                     pytest unit tests + synthetic alignment tests
-├── models/  references/  logs/
+│   ├── decision_engine.py     rules R1-R9, S1, S2 -> PASS / FAIL / REVIEW              [V2 M]
+│   └── runner.py              dual / flip sequences, side assignment, logging          [V2 M]
+├── gui/interface.py           main screen (results, side info, preview, flagged table)  [V2 M]
+├── gui/settings_window.py     profile/model, inspection, tolerances, golden JSON       [V2 N]
+├── gui/history_window.py      history, HTML report, CSV export                         [V2 N]
+├── gui/overlay.py             coloured boxes
+├── storage/                   image logger, result logger (CSV/JSON), HTML report      [V2 M/N]
+├── models/pcb_x/              PCB profile: metadata, golden, board profile, top/ bottom/ models [V2 N]
+├── references/calibration/    upper_camera.json, lower_camera.json
+├── tools/                     stage tests and setup utilities (see C3), check_profile.py [V2]
+├── tests/                     pytest: decision rules, 15 V2 scenarios, GUI smoke test
 ├── requirements.txt  install_pi.sh  run_pcbx.sh  deploy/
 ```
 
@@ -108,7 +120,7 @@ flowchart TB
     CRD[vision.coordinate_extraction]
     MAT[inspection.component_matching<br/>Hungarian]
     DEC[inspection.decision_engine]
-    GLD[(references/golden_*.json<br/>board_profile.json)]
+    GLD[(models/pcb_x/<br/>golden_reference.json<br/>board_profile.json)]
     LOG[storage.*]
   end
   BTN --> INP --> GUI
@@ -169,7 +181,7 @@ Do the stages **in order**; each ends with a check. All commands run in
   project (`git clone ...`), `chmod +x install_pi.sh && ./install_pi.sh`, reboot.
 * **Expected output:** the installer's self-test prints `OK` for numpy, cv2,
   torch, ultralytics, ncnn, scipy, PIL.ImageTk, tkinter, spidev, gpiozero, picamera2.
-* **Verify:** `python -m pytest -q tests` → `18 passed`.
+* **Verify:** `python -m pytest -q tests` → `39 passed` (the GUI test is skipped without a display).
 * **Why the venv uses `--system-site-packages`:** Picamera2/libcamera are apt
   packages compiled for the system Python; a normal venv cannot see them.
   **Why numpy is pinned:** pip would otherwise install a newer numpy into the
@@ -185,14 +197,14 @@ Do the stages **in order**; each ends with a check. All commands run in
      Camera Module 3 is auto-detected; Arducam IMX519 needs
      `dtoverlay=imx519,cam0` in `/boot/firmware/config.txt` (+ Arducam's
      libcamera for focus — follow their guide).
-  2. `python tools/test_cameras.py --side top --list` → copy the real v4l2
-     control names into `CAMERAS["top"]["v4l2_controls"]`.
+  2. `python tools/test_cameras.py --list` and `--both-streaming` → both IMX708
+     cameras seen, upper/lower mapping correct (swap `camera_num` if not).
   3. Place a board, then focus sweep:
-     `python tools/test_cameras.py --side bottom --focus-sweep 4 14 0.5` and
-     `python tools/test_cameras.py --side top --focus-sweep 0 600 25` → put the
+     `python tools/test_cameras.py --camera lower --focus-sweep 4 14 0.5` and
+     `python tools/test_cameras.py --camera upper --focus-sweep 4 14 0.5` → put the
      best values in `config.py`.
   4. Adjust exposure until the board is bright but not clipped.
-  5. `python tools/test_cameras.py` (10 captures per side).
+  5. `python tools/test_cameras.py` (10 captures per camera).
 * **Expected output:** resolution as configured; `brightness std < 2.0`,
   `sharpness CV < 5 %`, capture < 1 s per side, `RESULT: PASS`.
 * **Verify / decide:** if the EMEET fails the lock test, switch the top side to
@@ -231,12 +243,13 @@ Do the stages **in order**; each ends with a check. All commands run in
   `tools/test_alignment.py`, `vision/board_alignment.py`, `vision/fiducials.py`.
 * **Steps:**
   1. Calibrate each camera (15–20 checkerboard photos):
-     `python tools/calibrate_camera.py --side bottom --capture 20`.
+     `python tools/calibrate_camera.py --camera lower --capture 20` (and `--camera upper`).
   2. Measure the board with calipers → `BOARD_WIDTH_MM/HEIGHT_MM`.
   3. Teach the board per side (fiducials + templates), see the tool's header:
      `--capture`, then `--capture --keep 0 3`, then `--capture --flipped`.
   4. Test 4 situations × 10 insertions: normal, rotated 180°, flipped, empty
-     tray: `python tools/test_alignment.py --side bottom --images <folder> --expect ok`.
+     tray: `python tools/test_alignment.py --camera upper --images <folder> --expect top`
+     (see `docs/PCB_IDENTIFICATION_AND_ORIENTATION.md`).
 * **Expected output:** calibration RMS < 0.5 px (webcam < 1.0 px); alignment
   100 % correct per situation; fiducial residual < 0.15 mm.
 * **Verify:** open `test_output/alignment/<side>/` — canvases must look
@@ -247,7 +260,8 @@ Do the stages **in order**; each ends with a check. All commands run in
 * **Files:** `tools/capture_dataset.py`, `training/*`, `vision/component_detection.py`.
 * **Steps:** pilot set first (30 canvases per side → label → train → check the
   small parts are found), then the full dataset (Package B). Copy the NCNN
-  folders to `models/`, set `MODELS[side]["path"]` and `imgsz`.
+  models into the profile (`training/export.py --profile-dir ../pcbx_inspection/models/pcb_x`)
+  and run `python tools/check_profile.py` (docs/MODEL_INTEGRATION.md).
 * **Verify:** `python tools/benchmark.py` prints per-side inference time; the
   class-list check passes (a swapped model raises an error).
 
@@ -259,7 +273,7 @@ Do the stages **in order**; each ends with a check. All commands run in
   `result.json`: agreement within ~0.2 mm.
 
 ### Stage 9 — Golden reference
-* **Objective:** `references/golden_top.json`, `golden_bottom.json`.
+* **Objective:** `models/pcb_x/golden_reference.json` (both sides; docs/GOLDEN_REFERENCE_AND_TOLERANCES.md).
 * **Files:** `tools/build_golden_reference.py`, `inspection/golden_reference.py`.
 * **Steps:** 10+ known-good boards × 3 insertions (`capture_dataset.py --note good`),
   build with `--seed-label` (one hand-checked label file), rename IDs to the

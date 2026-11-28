@@ -1,14 +1,59 @@
-# PCB X — Portable Edge-AI Inspection Chamber (capstone implementation package)
+# PCB X — Portable Edge-AI Inspection Chamber (capstone implementation package) — V2
 
-Dual-sided PCB component detection with tri-tier **PASS / FAIL / REVIEW**
-classification on a Raspberry Pi 5. Built from your *PCB X System Workflow and
-Training Guide* (PDF), which remains the reference design; the changes and the
-reasons for them are listed in `docs/00_Technical_Review.md`, section 1.
+**"Portable Edge-AI Inspection Chamber for Dual-Sided PCB Component Detection and
+Tri-Tier (Pass, Fail, Review) Classification."** Runs completely on a Raspberry
+Pi 5 — no cloud. Version 2 of the existing repository: same objectives, same
+golden-reference and PASS / FAIL / REVIEW approach; updated for **two Raspberry
+Pi Camera Module 3** units, PCB side identification from the board's own
+markings, automatic orientation correction, a PCB profile folder for trained
+models, and tolerance editing in the GUI. What changed and why:
+`docs/01_V2_Evaluation_and_Changes.md` and `CHANGELOG.md`.
 
-**Final prototype configuration (used in the diagrams below):**
-Raspberry Pi 5 (4 GB) · **2 × Raspberry Pi Camera Module 3 (standard)** — bottom on
-CAM0, top on CAM1 · 2 × WS2812B strips on one SPI data line through a 74AHCT125
-level shifter · 7″ HDMI touchscreen · START button, drawer switch, power button.
+**Final prototype configuration:** Raspberry Pi 5 (4 GB) · **2 × Camera Module 3
+Standard** — lower camera on CAM0, upper camera on CAM1 · 2 × WS2812B strips on
+one SPI data line through a 74AHCT125 level shifter · 7″ HDMI touchscreen ·
+START button, drawer switch, power button · 32 GB high-endurance microSD.
+
+## 0. Complete workflow
+
+```mermaid
+flowchart LR
+  CAP["Camera capture<br/>upper + lower, one LED at a time<br/>(or one camera + flip)"] --> ID["PCB identification<br/>FRONT markers first<br/>(SHARP, part no.)<br/>then BACK (T1 block, barcode)"]
+  ID -->|unknown / ambiguous| REV1["REVIEW"]
+  ID --> ORI["Orientation correction<br/>0/90/180/270 deg<br/>+ mounting-hole alignment<br/>-> 10 px/mm canvas"]
+  ORI --> DET["YOLO detection<br/>model of THAT side<br/>(NCNN, .pt fallback)"]
+  DET --> CMP["Golden reference comparison<br/>mm coordinates, Hungarian matching,<br/>radial + X/Y tolerances"]
+  CMP --> CLS["PASS / FAIL / REVIEW<br/>per side, then combined<br/>FAIL > REVIEW > PASS"]
+  REV1 --> CLS
+  CLS --> REC["Inspection record<br/>CSV + JSON + images + HTML report<br/>(profile, golden revision)"]
+```
+
+| Front | Back | Overall |
+|---|---|---|
+| PASS | PASS | PASS |
+| PASS | FAIL | FAIL |
+| FAIL | PASS | FAIL |
+| PASS | REVIEW | REVIEW |
+| REVIEW | FAIL | FAIL |
+| REVIEW | REVIEW | REVIEW |
+
+## Quick start
+
+```bash
+# Raspberry Pi (Raspberry Pi OS 64-bit with desktop)
+git clone <your-repo> ~/PCBX_Capstone && cd ~/PCBX_Capstone/pcbx_inspection
+./install_pi.sh && sudo reboot
+source ~/pcbx-venv/bin/activate && cd ~/PCBX_Capstone/pcbx_inspection
+python -m pytest -q tests             # simulated tests (39 + GUI test on a desktop)
+python tools/test_cameras.py --list   # two imx708 cameras?
+python tools/check_profile.py         # what is still missing (markers, golden, models)
+./run_pcbx.sh                         # the appliance (shows NOT READY + the list until set up)
+```
+Set-up order: hardware (`docs/A_Hardware.md`) → cameras/LEDs/calibration →
+identification markers and holes (`docs/PCB_IDENTIFICATION_AND_ORIENTATION.md`)
+→ dataset and training (`docs/DATASET_LABELING.md`, `docs/MODEL_TRAINING.md`)
+→ install model (`docs/MODEL_INTEGRATION.md`) → golden reference and tolerances
+(`docs/GOLDEN_REFERENCE_AND_TOLERANCES.md`) → testing (`docs/D_Testing_and_Validation.md`).
 
 ---
 
@@ -25,16 +70,16 @@ flowchart LR
   end
 
   subgraph CTRL["Controller"]
-    PI["Raspberry Pi 5 · 4 GB<br/>Active Cooler · 64 GB microSD<br/>Raspberry Pi OS 64-bit<br/>Python · OpenCV · YOLO NCNN"]
+    PI["Raspberry Pi 5 · 4 GB<br/>Active Cooler · 32 GB microSD<br/>Raspberry Pi OS 64-bit<br/>Python · OpenCV · YOLO NCNN"]
   end
 
   subgraph CHAMBER["Inspection chamber"]
     direction TB
-    CAMT["Top camera<br/>Camera Module 3<br/>(Side A, THT parts)"]
+    CAMT["Upper camera<br/>Camera Module 3<br/>(normally sees FRONT / Side A)"]
     LEDT["Top LED strip<br/>WS2812B ×24 + diffuser"]
     TRAY["Drawer + nest<br/>PCB X 115 × 45 mm"]
     LEDB["Bottom LED strip<br/>WS2812B ×24 + diffuser"]
-    CAMB["Bottom camera<br/>Camera Module 3<br/>(Side B, SMD parts)"]
+    CAMB["Lower camera<br/>Camera Module 3<br/>(normally sees BACK / Side B)"]
     SW["Drawer microswitch"]
     TRAY -.- SW
   end
@@ -67,8 +112,8 @@ flowchart LR
 
 | From | To | Interface |
 |---|---|---|
-| Bottom camera | Pi 5 CAM0 | MIPI CSI-2, 22-pin → 15-pin ribbon |
-| Top camera | Pi 5 CAM1 | MIPI CSI-2, 22-pin → 15-pin ribbon |
+| Lower camera | Pi 5 CAM0 | MIPI CSI-2, Standard–Mini cable (22-pin → 15-pin) |
+| Upper camera | Pi 5 CAM1 | MIPI CSI-2, Standard–Mini cable (22-pin → 15-pin) |
 | Pi 5 GPIO10 | 74AHCT125 → top strip DIN → bottom strip DIN | SPI MOSI, WS2812 data (800 kHz) |
 | START button | Pi 5 GPIO17 | digital in, internal pull-up |
 | START button LED | Pi 5 GPIO22 | digital out |
@@ -92,8 +137,8 @@ flowchart LR
  ┌──────────────────────────────────────────────────────┐                        │   C1     │
  │                  RASPBERRY PI 5 (4 GB)               │                        ├──┤├──────┤  C1 = 1000 µF / 10 V
  │                                                      │                        │  (+)  (−)│      (at strip input)
- │  CAM0 [22-pin] ◄═══ ribbon ═══ BOTTOM Camera Module 3│                        │          │
- │  CAM1 [22-pin] ◄═══ ribbon ═══ TOP    Camera Module 3│                        │          │
+ │  CAM0 [22-pin] ◄═══ ribbon ═══ LOWER  Camera Module 3│                        │          │
+ │  CAM1 [22-pin] ◄═══ ribbon ═══ UPPER  Camera Module 3│                        │          │
  │  HDMI0 ═══ micro-HDMI ═══► 7" touchscreen (HDMI in)  │                        │          │
  │  USB 2.0 ◄═══ USB ═══ touchscreen (touch / power*)   │                        │          │
  │  FAN ◄═══ Active Cooler                              │                        │          │
@@ -197,7 +242,7 @@ S1 uses pin 9 (GND) as its return. All GND pins are connected together on the bo
 | USB 2.0 | Touchscreen touch (and power if the screen needs it) | |
 | FAN (4-pin) | Official Active Cooler | |
 | J2 (PWR BUT, 2 pads) | S3 power button | momentary NO; no resistor needed |
-| microSD | 64 GB A2 high-endurance | OS + software + logs |
+| microSD | 32 GB high-endurance (A1/A2) | OS + software + logs (off-load logs weekly) |
 
 ### 3.3 74AHCT125 (U1) pinout (DIP-14, top view)
 
@@ -262,52 +307,54 @@ LEDs 0–23 are the top strip and 24–47 the bottom strip
 
 ---
 
-## 5. Start here
+## 5. Documentation map
 
-1. **Read** `docs/00_Technical_Review.md` — answers to Parts 1–8, corrections to
-   the PDF, decision table, roadmap and the recommended final configuration.
-2. **Buy and wire** with `docs/A_Hardware.md` and sections 1–4 above.
-3. **Bring up the Pi** stage by stage with `docs/C_Pi_Software_Roadmap.md`.
-4. **Collect, label and train** with `training/README.md` and the Colab notebook.
-5. **Test and report** with `docs/D_Testing_and_Validation.md`.
+| Need | Document |
+|---|---|
+| What changed in V2, hardware evaluation, PCB photo analysis, missing information | `docs/01_V2_Evaluation_and_Changes.md` |
+| Hardware set-up, cameras (connectors, cable orientation, testing), LEDs, wiring, BOM | `docs/A_Hardware.md` + sections 1–4 above |
+| Software installation, architecture, stage-by-stage bring-up, autostart | `pcbx_inspection/README.md`, `docs/C_Pi_Software_Roadmap.md` |
+| PCB identification + orientation correction + how to calibrate it | `docs/PCB_IDENTIFICATION_AND_ORIENTATION.md` |
+| Golden reference JSON, tolerances, editing in the UI | `docs/GOLDEN_REFERENCE_AND_TOLERANCES.md` |
+| Capturing + labelling the dataset | `docs/DATASET_LABELING.md` |
+| Training + evaluating YOLO (Windows / Colab) | `docs/MODEL_TRAINING.md`, `training/README.md`, `training/PCBX_YOLO_Training.ipynb` |
+| Installing/replacing a trained model (.pt / NCNN) | `docs/MODEL_INTEGRATION.md` |
+| Testing (simulated vs physical) | `docs/D_Testing_and_Validation.md` |
+| Problems | `docs/TROUBLESHOOTING.md` |
+| V1 technical review (history, PDF corrections) | `docs/00_Technical_Review.md` |
 
-## 6. Package map
+## 6. What is verified, and what is not
 
-| Package | Content | Location |
-|---|---|---|
-| A Hardware | block diagram, wiring diagram, GPIO table, BOM, chamber/tray, controls | `docs/A_Hardware.md`, this README |
-| B AI training | Colab notebook, data YAMLs, hyper-parameter YAMLs, Label Studio configs, prepare/check/zip tools, train/validate/export/learning-curve scripts, requirements, README | `training/` |
-| C Pi software | complete Python project, installer, autostart files, unit tests | `pcbx_inspection/`, `docs/C_Pi_Software_Roadmap.md` |
-| D Testing | procedures D1–D9 with pass criteria and record templates | `docs/D_Testing_and_Validation.md` |
+**Verified in our build environment (Linux x86, Python 3.13 / 3.12, ultralytics 8.4.218, OpenCV 5.1):**
+* 39 automated tests pass, including all 15 required cases (front/back/unknown
+  identification, correct/rotated/flipped orientation, missing, misplaced,
+  low confidence, invalid golden JSON, missing model, camera failure, and the
+  front/back combinations) on **synthetic** board images with simulated cameras;
+* the Tkinter GUI (inspection, settings save + refusal of invalid values,
+  history, HTML report, live preview) under a virtual display;
+* barcode marker detection and EAN-13 decoding on a synthetic barcode;
+* a real (tiny, demo-data) YOLOv8n trained, exported to NCNN, installed with
+  `export.py --profile-dir`, validated by `check_profile.py`, run through
+  `run_offline.py`; `.pt` and NCNN both load through the same code.
 
-## 7. What has been verified, and what has not
+**Not verified — needs your hardware and data:** anything on the real Raspberry
+Pi 5, the two Camera Module 3 units, LEDs, GPIO, the real PCB X markings and
+mounting holes, NCNN speed and RAM on the Pi, and every accuracy figure. No
+trained model is included. The schematic has not been built — check each
+connection against the datasheets before powering up. Estimates in the
+documents are labelled **[ESTIMATE]** / **[MUST TEST]**.
 
-**Verified in our build environment (Linux x86, Python 3.13, ultralytics 8.4.218):**
-18 unit tests pass (matching, all decision rules, Hungarian vs nearest-neighbour,
-WS2812 bit encoding, alignment Scenarios A/B/C, empty tray, hidden fiducial);
-the full inspection pipeline (`process()` and `inspect()` with simulated cameras)
-produces PASS/FAIL, overlays, CSV/JSON logs; the training chain demo dataset →
-prepare → check → train (YOLOv8n and YOLO26n) → validate → rectangular NCNN
-export → NCNN prediction; and the Colab notebook executed end-to-end locally.
-
-**Not verified:** the Tkinter GUI was checked statically but not opened (no
-display toolkit in our build environment) — run `python main.py --simulate
---windowed` early. **Needs your hardware:** anything involving the real cameras,
-LEDs, GPIO, the Raspberry Pi 5 itself, NCNN speed on the Pi, RAM use, and every
-accuracy figure. All such numbers in the documents are labelled **[ESTIMATE]**
-or **[MUST TEST]**. The schematic has not been built and tested — check every
-connection against the part datasheets before powering up.
-
-## 8. Folder overview
+## 7. Folder overview
 
 ```
 PCBX_Capstone/
-├── README.md                     ← this file (block diagram, schematic, pinouts)
-├── docs/
-│   ├── 00_Technical_Review.md
-│   ├── A_Hardware.md
-│   ├── C_Pi_Software_Roadmap.md
-│   └── D_Testing_and_Validation.md
-├── training/                     (Package B)
-└── pcbx_inspection/              (Package C)
+├── README.md                     ← this file (workflow, block diagram, schematic, pinouts)
+├── CHANGELOG.md                  V1 -> V2
+├── docs/                         guides (see section 5)
+├── training/                     Package B: dataset tools, Colab notebook, train/validate/export
+└── pcbx_inspection/              Package C: Raspberry Pi application
+    ├── models/pcb_x/             PCB profile: metadata, examples; your models/golden/markers go here
+    ├── references/calibration/   per-camera lens calibration
+    ├── config.py, config/        settings
+    └── camera/ vision/ inspection/ gui/ storage/ lighting/ hardware/ tools/ tests/
 ```

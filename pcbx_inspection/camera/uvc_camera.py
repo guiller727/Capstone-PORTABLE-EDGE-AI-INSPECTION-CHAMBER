@@ -1,5 +1,9 @@
 """
-camera/uvc_camera.py - USB webcam (EMEET C60E) through OpenCV + V4L2.
+camera/uvc_camera.py - OPTIONAL USB webcam fallback (e.g. EMEET C60E) via OpenCV + V4L2.
+
+V2: the primary hardware is two Camera Module 3 units (picam_camera.py).
+This backend is kept so a USB webcam can still be used by setting
+CAMERAS[...]["backend"] = "uvc" in config.py.
 
 Why v4l2-ctl? OpenCV's CAP_PROP_AUTO_EXPOSURE / CAP_PROP_FOCUS behave
 differently per driver. Calling v4l2-ctl (package v4l-utils) with the exact
@@ -101,10 +105,10 @@ class UvcCamera(BaseCamera):
         self.is_open = True
         log.info("UVC camera %s opened at %dx%d", dev, w, h)
 
-    def capture(self) -> np.ndarray:
+    def capture(self, fresh: bool = True) -> np.ndarray:
         if not self.is_open:
             raise CameraError(f"{self.name} camera is not open")
-        for _ in range(int(self.cfg.get("flush_frames", 5))):
+        for _ in range(int(self.cfg.get("flush_frames", 5)) if fresh else 0):
             self.cap.grab()                 # discard queued (old) frames
         ok, img = self.cap.read()
         if not ok or img is None or img.size == 0:

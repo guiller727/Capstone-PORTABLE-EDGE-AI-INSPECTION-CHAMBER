@@ -1,4 +1,4 @@
-# Package A — Hardware documentation
+# Package A — Hardware setup and wiring guide (V2: 2 × Camera Module 3)
 
 Labels used in this document:
 **[CONFIRMED]** = checked against a manufacturer/official source (listed at the end) ·
@@ -12,11 +12,11 @@ Labels used in this document:
 | Block | Recommended | Status vs. your plan |
 |---|---|---|
 | Computer | **Raspberry Pi 5, 4 GB** + official Active Cooler + official 27 W USB-C PSU | keep 4 GB (8 GB not needed, see A1.1) |
-| Bottom camera (SMD side) | **Raspberry Pi Camera Module 3 (standard, 12 MP, autofocus)** on CAM0 (final choice) | replaces Arducam 16 MP |
-| Top camera (THT side) | **2nd Camera Module 3** on CAM1 (final choice, nothing bought yet). EMEET C60E on USB remains a software-supported alternative | replaced |
+| Lower camera (below the tray, normally sees the BACK/SMD side) | **Raspberry Pi Camera Module 3 Standard** on **CAM0** | V2 final |
+| Upper camera (above the tray, normally sees the FRONT/THT side) | **Raspberry Pi Camera Module 3 Standard** on **CAM1** | V2 final (USB webcam code kept as optional fallback) |
 | Lighting | **WS2812B, 2 strips on ONE SPI data line** (GPIO10), 74AHCT125 level shifter, separate 5 V 3 A supply, opal diffusers | keep WS2812B, add shifter + diffuser |
 | Display | **7″ HDMI touchscreen (1024 × 600)** | HDMI, not DSI (both CAM/DISP ports may be needed for cameras) |
-| Storage | **64 GB A2 high-endurance microSD** (OS + app + logs) | upgrade from 32 GB; SSD optional |
+| Storage | **32 GB high-endurance A1/A2 microSD** (OS + app + logs; off-load logs weekly) | 32 GB is sufficient (V2 evaluation); 64 GB only if same price |
 | Controls | Power button on Pi 5 **J2** header, 1 illuminated **START** button, 1 **drawer-closed microswitch** | no E-stop, no reset button |
 | Mechanics | **Drawer-type tray with removable 3-D-printed nest**, 4 corner support tabs, end-stop + ball-catch detent | see A5 |
 
@@ -61,58 +61,73 @@ Labels used in this document:
 
 ---
 
-## A2. Cameras
+## A2. Cameras — 2 × Raspberry Pi Camera Module 3 Standard
 
-### A2.1 What the numbers really mean
+### A2.1 Facts [CONFIRMED, see sources]
+| Item | Value |
+|---|---|
+| Sensor | Sony IMX708, 11.9 MP, 4608 × 2592, motorised focus |
+| Field of view (standard lens) | 66° horizontal × 41° vertical (75° diagonal) |
+| Focus range | 10 cm – infinity |
+| Pi 5 connectors | **two** 4-lane MIPI connectors **CAM/DISP 0** and **CAM/DISP 1** (each camera *or* display) |
+| Cable | Pi 5 uses the **mini 22-pin** connector → "**Standard–Mini**" camera cable (22-pin on the Pi side, 15-pin on the camera side); 200/300/500 mm lengths exist |
+| Drivers | none to install — official modules are auto-detected by Raspberry Pi OS |
+| Two cameras at once | supported (rpicam-apps `--camera 0/1`, two `Picamera2(n)` objects) |
 
-| | EMEET C60E (top) | Arducam IMX519 16 MP (bottom, your plan) | **Camera Module 3** (recommended alternative) |
-|---|---|---|---|
-| Interface | USB 2.0 UVC, MJPEG/YUY2 [CONFIRMED] | CSI-2 [CONFIRMED] | CSI-2 [CONFIRMED] |
-| Advertised resolution | 4K 3840×2160 @ 30 fps | 4656 × 3496 | 4608 × 2592 |
-| **Sensor** | Retailer spec lists a **4 MP** 1/2.8″ CMOS [CONFIRMED – Adorama]. ⇒ "4K" is most likely **up-scaled**; real detail ≈ 2560×1440. | 16 MP 1/2.53″ | 11.9 MP, 1.4 µm pixels |
-| FOV | 73° diagonal | 66° H × 49.5° V (AF model) [CONFIRMED – Arducam] | ≈ 66° H × 41° V (standard) |
-| Focus | PDAF autofocus; manual lock via UVC **unknown** [MUST TEST] | Arducam: **AF models need Arducam's custom libcamera** for focus control [CONFIRMED – Arducam docs] | Motorised focus, supported by stock Picamera2 (`LensPosition`) |
-| Exposure/WB lock | via `v4l2-ctl`, names vary [MUST TEST] | Picamera2 controls | Picamera2 controls |
-| Pi 5 support | any USB port | Pi 5 + Bookworm/Trixie listed by Arducam | official |
-| Price | already owned | ≈ $25 | ₱1,530 (element14 PH) – ₱2,490 (Makerlab) |
+### A2.2 Installing the cameras
+1. **Power off and unplug the Pi.** Never connect cameras live.
+2. On the Pi 5 the two camera connectors sit between the Ethernet and HDMI ports.
+   Lift the connector latch gently.
+3. Insert the 22-pin end of the cable with its **metal contacts facing the
+   Ethernet port** (Arducam/Waveshare Pi 5 guides), fully and straight; press the latch down.
+4. **CAM0 → lower camera** (looks up at the board), **CAM1 → upper camera** (looks down).
+5. Camera end: follow the cable's printed marking / the camera's connector
+   (contacts towards the connector's contacts). Do not twist or sharply fold the cable;
+   route it away from the drawer.
+6. Mount each camera so the board is **110–130 mm** away and centred
+   (≥ 10 cm minimum focus). At 120 mm the view is ≈ 156 × 90 mm, the board
+   115 × 45 mm fits with margin. [ESTIMATE]
 
-**Recommendation:** The cameras are not *incompatible*, but both carry a
-software-control risk that matters more than megapixels:
+### A2.3 Identifying and testing the cameras
+```bash
+rpicam-hello --list-cameras                # expect two "imx708" entries (0 and 1)
+rpicam-still --camera 0 -o cam0.jpg        # lower camera?  (cover it with a finger to check)
+rpicam-still --camera 1 -o cam1.jpg        # upper camera?
+cd ~/PCBX_Capstone/pcbx_inspection && source ~/pcbx-venv/bin/activate
+python tools/test_cameras.py --list        # what Picamera2 sees + config mapping
+python tools/test_cameras.py --both-streaming   # both cameras open at the same time
+python tools/test_cameras.py               # 10 LED-synchronised captures per camera (stability)
+python tools/test_cameras.py --camera upper --focus-sweep 4 14 0.5   # best LensPosition
+```
+If upper/lower are swapped, exchange `camera_num` in `config.py` →
+`CAMERAS["upper"]` / `["lower"]` (or swap the cables).
 
-1. **Top / EMEET:** keep it **if** Stage 2 (`tools/test_cameras.py --side top --list`
-   then the 10-capture stability test) shows that *manual exposure,
-   white balance and focus can be locked* and brightness/sharpness do not drift.
-   Large THT parts don't need more than ~2560 × 1440. If focus or exposure keep
-   changing, replace it with a 2nd Camera Module 3 on CAM1 — then both sides
-   use identical code (`backend: "picamera2"`).
-2. **Bottom / Arducam IMX519:** if you already own it, try Arducam's install
-   guide in Stage 2. If manual `LensPosition` works, keep it. If the custom
-   libcamera breaks after `apt upgrade` or focus cannot be set, switch to the
-   **Camera Module 3** (official software, no custom packages — lower
-   maintenance risk for a defense demo).
+### A2.4 Software configuration (`config.py` → `CAMERAS`)
+| Key | Value | Why |
+|---|---|---|
+| `backend` | `picamera2` | official CSI stack |
+| `camera_num` | upper 1, lower 0 | connector |
+| `width × height` | 2304 × 1296 | 2×2-binned mode: sharper per pixel, faster, ~4× less RAM than 12 MP; ≈ 14.8 px/mm at 120 mm, above the 10 px/mm canvas |
+| `ExposureTime`, `AnalogueGain` | fixed (start 8000 µs, 1.0) | no auto-exposure drift |
+| `AwbEnable` / `ColourGains` | False / fixed | colours stay constant (part colours carry information) |
+| `AfMode` / `LensPosition` | 0 (manual) / ≈ 1 / distance [m] (e.g. 8.0 at 125 mm) | fixed focus at a fixed distance; tune with `--focus-sweep` |
+| `flush_frames` | 2 | discard frames exposed before the LED switched on |
+| `led` | upper → `top` strip, lower → `bottom` strip | only the light of the camera taking the photo is on |
+| `calibration_file` | `upper_camera.json` / `lower_camera.json` | independent lens calibration per camera |
 
-### A2.2 Working distance and resolution [ESTIMATE from FOV — confirm in Stage 2]
+### A2.5 Simultaneous or sequential?
+Both cameras are **opened and streaming for the whole session** (no 1–2 s
+start-up per board). Photos are taken **sequentially** — upper with the top
+LEDs only, then lower with the bottom LEDs only — so the light of one side
+does not leak through holes and board edges into the other camera. The extra
+time is < 1 s. In **flip mode** only `FLIP_CAMERA` is used and the operator
+flips the board between the two photos (Settings > Inspection).
 
-Board 115 × 45 mm, plus margin → field of view ≥ ~140 × 60 mm.
-
-| Camera @ 120 mm | Field of view | Capture mode | Raw px/mm | Canvas |
-|---|---|---|---|---|
-| Camera Module 3 | ≈ 156 × 90 mm | 2304 × 1296 binned | ≈ 14.8 | 10 px/mm |
-| Arducam IMX519 | ≈ 156 × 110 mm | 2328 × 1748 binned | ≈ 14.9 | 10 px/mm |
-| EMEET C60E | ≈ 155 × 87 mm | 2560 × 1440 | ≈ 16.5 (nominal) | 10 px/mm |
-
-An 0805 resistor (2.0 × 1.25 mm) is ≈ 20 × 12 px in the canvas — the PDF's
-target. Mount cameras at **110–130 mm** from the board; the minimum focus
-distance of the EMEET is not published [MUST TEST].
-
-### A2.3 Different camera resolutions — a problem?
-
-No. Each side is warped to the **same canvas scale (10 px/mm)** and each side
-has its **own** golden reference built with its **own** camera. Coordinates
-are never compared *between* cameras, only *within* a side. Lens distortion
-is removed per camera (checkerboard calibration).
-
----
+### A2.6 Same camera model, both sides
+Each side is warped to the same 10 px/mm canvas and compared with **that
+side's** golden reference. Coordinates are never compared between cameras,
+so identical cameras simply mean one calibration procedure and one set of
+settings to learn. Each camera still has its own calibration file.
 
 ## A3. Lighting (WS2812B)
 
@@ -156,7 +171,7 @@ is removed per camera (checkerboard calibration).
  Raspberry Pi 5 pin 15 (GPIO22) ──[ 330 Ω ]──►|── GND        (START button LED)
  Raspberry Pi 5 J2 pads ──────────[ POWER button, momentary NO ]
  Raspberry Pi 5 USB-C  ◄── official 27 W PSU
- CAM0 ◄── bottom camera   CAM1 ◄── top camera (if CSI)   USB 2.0 ◄── EMEET (if used)
+ CAM0 ◄── lower Camera Module 3   CAM1 ◄── upper Camera Module 3
  HDMI0 ──► 7" display     USB ◄── touch panel
 ```
 
@@ -195,16 +210,13 @@ strips** switched by logic-level MOSFET modules on GPIO12/GPIO13
 
 | Option | Verdict |
 |---|---|
-| 32 GB microSD | Works for OS + app (~8–10 GB) but too tight once you keep raw images for retraining |
-| **64 GB A2 high-endurance microSD** | **Recommended.** Holds OS, venv, models, and ~5,000 logged boards at ~7 MB each (raw + canvases + overlays) [ESTIMATE] |
-| 128 GB high-endurance | Only if you keep *all* raw images of a long trial |
-| SATA SSD via USB adapter | Works on a USB 3 port, but adds a box, a cable and power draw. Only if you already own one, and only for `logs/` and datasets |
-| NVMe via M.2 HAT+ | Fastest/most robust, but extra cost — not needed for this workload |
+| **32 GB high-endurance (A1/A2) microSD** | **Sufficient** [ESTIMATE]: OS + desktop 5–7 GB, venv with CPU PyTorch 2–3 GB, models < 30 MB → ~20 GB free ≈ 5,000 inspections with raw images (≈ 2–4 MB each) or ~20,000 without raw images. Copy `logs/` to a laptop weekly and delete old dates. |
+| 64 GB high-endurance | only if about the same price, or if you keep every raw image of a long trial |
+| SATA SSD via USB / NVMe HAT | not needed for this workload |
 
-Wear is not a real risk at this write rate (a few MB per board). Back up
-`references/`, `models/` and `logs/` to a laptop weekly (`rsync` or a USB stick).
-
----
+Check free space with `df -h /`. Use a **high-endurance** card (made for
+continuous writing, e.g. dash-cam cards); ordinary cards wear out faster.
+Back up `models/`, `references/` and `config/` — they are your calibrated system.
 
 ## A5. Chamber and tray mechanism
 
@@ -300,12 +312,12 @@ flowchart LR
     PSU5[5 V 3 A LED supply] --> LEDT & LEDB
   end
   subgraph Chamber
-    CAMT[Top camera<br/>EMEET USB or CM3 CSI] -->|USB2 / CAM1| PI
-    CAMB[Bottom camera<br/>Camera Module 3 / IMX519] -->|CAM0| PI
+    CAMT[Upper camera<br/>Camera Module 3] -->|CAM1| PI
+    CAMB[Lower camera<br/>Camera Module 3] -->|CAM0| PI
     LEDT[Top WS2812B strip<br/>+ diffuser] -->|DOUT→DIN| LEDB[Bottom WS2812B strip<br/>+ diffuser]
     TRAY[Drawer + nest<br/>with PCB X] -.- SW[Drawer microswitch]
   end
-  PI[Raspberry Pi 5 4 GB<br/>Active Cooler, 64 GB microSD]
+  PI[Raspberry Pi 5 4 GB<br/>Active Cooler, 32 GB microSD]
   PI -->|GPIO10 SPI MOSI| SHIFT[74AHCT125<br/>3.3→5 V] --> LEDT
   SW -->|GPIO27| PI
   BTN[START button + LED] -->|GPIO17 / GPIO22| PI
@@ -327,9 +339,9 @@ real quotes for your paper.
 | 1 | Raspberry Pi 5 **4 GB** | 1 | 11,449 | 11,449 | [CONFIRMED] Makerlab |
 | 2 | Official 27 W USB-C power supply | 1 | 800–1,200 | ~1,000 | needed for full USB current |
 | 3 | Official Active Cooler | 1 | 350–600 | ~450 | |
-| 4 | 64 GB A2 high-endurance microSD | 1 | 500–900 | ~700 | Samsung PRO Endurance / SanDisk High Endurance |
-| 5 | Camera Module 3 (standard) — bottom | 1 | 1,530–2,490 | ~2,000 | [CONFIRMED] element14 PH ₱1,529.60; Makerlab ₱2,490 |
-| 6 | Pi 5 camera cable 22-pin → 15-pin, 300–500 mm | 1–2 | 70–250 | ~200 | must be the **Pi 5 (22-pin mini)** type |
+| 4 | 32 GB high-endurance microSD (A1/A2) | 1 | 350–700 | ~500 | e.g. Samsung PRO Endurance / SanDisk High Endurance |
+| 5 | Camera Module 3 **Standard** (not Wide) | **2** | 1,530–2,490 | ~4,000 | [CONFIRMED Nov 2026] element14 PH ₱1,529.60; Makerlab ₱2,490 |
+| 6 | Pi 5 "Standard–Mini" camera cable (22→15-pin), 300–500 mm | 2 | 70–250 | ~300 | the short cable in the camera box does **not** fit the Pi 5 |
 | 7 | 7″ HDMI touchscreen 1024×600 | 1 | 2,845–3,290 | ~3,000 | [CONFIRMED] Makerlab range |
 | 8 | Micro-HDMI → HDMI cable (short) | 1 | 150–300 | ~200 | |
 | 9 | WS2812B 5 V 60 LED/m strip, 1 m | 1 | 250–450 | ~350 | cut 2 × 24 LEDs |
@@ -344,13 +356,11 @@ real quotes for your paper.
 | 18 | 3-D-printed nest + drawer (PLA/PETG, matte black) | 1 | 300–800 | ~600 | print 2–3 test nests |
 | 19 | Drawer rails, ball-catch, hinges, standoffs, screws | 1 set | 200–500 | ~350 | |
 | 20 | Printed checkerboard on stiff card | 1 | 50–100 | ~80 | calibration |
-| | **Subtotal (recommended, EMEET kept for top)** | | | **≈ ₱24,200** | |
-| 21 | Optional: 2nd Camera Module 3 (if EMEET fails Stage 2) | 1 | 1,530–2,490 | ~2,000 | |
+| | **Subtotal (V2: 2 × Camera Module 3)** | | | **≈ ₱26,000** | estimate, get quotes |
 | 22 | Optional: polariser film (sheet + lens piece) | 1 | 200–500 | ~350 | |
 | 23 | Optional: 8 GB Pi 5 instead of 4 GB | — | +6,550 | — | not recommended |
 
-Already owned (not counted): EMEET C60E, Arducam 16 MP. If the Arducam passes
-Stage 2, item 5 can be dropped (−₱2,000).
+V2: EMEET C60E and Arducam 16 MP are no longer needed (the USB-webcam code path is kept only as a fallback).
 
 **Purchase order** (to unblock software early): items 1–4, 5–6, 9–12 first
 (Stages 1–4 need them), then 7–8, 13–15, then mechanics (16–19) once camera
@@ -359,6 +369,8 @@ distance and lighting are fixed in the pilot.
 ---
 
 ### Sources (checked Nov 2026)
+- Raspberry Pi camera documentation (Pi 5 mini 22-pin connector, Standard–Mini cable); Camera Module 3 product brief/page (4608 × 2592, 66° × 41°, 10 cm–∞)
+- Arducam / Waveshare Pi 5 connection guides (metal contacts face the Ethernet port); Tom's Hardware / The Pi Hut dual-camera guides
 - Ultralytics Raspberry Pi guide & NCNN integration docs (NCNN fastest on Pi; YOLO26n NCNN 67.03 ms at 640 px on Pi 5; SSD vs SD advice)
 - Arducam 16MP IMX519 documentation (FOV 66°×49.5°; AF models need Arducam libcamera; Pi 5 `dtoverlay=imx519`)
 - Adorama / EMEET product pages (C60E: 4K30/1080p60, 73° FOV, PDAF, listed 4 MP sensor, USB 2.0)

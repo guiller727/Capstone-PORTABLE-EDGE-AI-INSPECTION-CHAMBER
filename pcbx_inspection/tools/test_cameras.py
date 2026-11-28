@@ -4,10 +4,10 @@ tools/test_cameras.py - Stage 2/4 test: open cameras, check locked settings,
 measure stability, find the best focus.
 
 Examples
-  python tools/test_cameras.py                     # both sides, 10 captures each
-  python tools/test_cameras.py --side top --list   # print the webcam's v4l2 controls
-  python tools/test_cameras.py --side bottom --focus-sweep 4 14 0.5
-  python tools/test_cameras.py --side top --focus-sweep 0 600 25
+  python tools/test_cameras.py --list                    # which CSI cameras libcamera sees
+  python tools/test_cameras.py                           # both cameras, 10 captures each
+  python tools/test_cameras.py --camera lower --focus-sweep 4 14 0.5
+  python tools/test_cameras.py --both-streaming          # open BOTH cameras at once (Pi 5 check)
 
 PASS criteria (Stage 2):
   * both cameras open and deliver the configured resolution
@@ -33,10 +33,11 @@ OUT = C.PROJECT_DIR / "test_output" / "cameras"
 
 
 def stability(cam, leds, side, n):
+    led = C.CAMERAS[side].get("led", "top")
     means, sharp, times = [], [], []
     for i in range(n):
         t0 = time.perf_counter()
-        leds.light(side)
+        leds.light(led)
         time.sleep(C.LED_SETTLE_S)
         img = cam.capture()
         leds.all_off()
@@ -71,7 +72,7 @@ def focus_sweep(cam, leds, side, start, stop, step):
             apply_v4l2_controls(cam.device, {"focus_automatic_continuous": 0,
                                              "focus_absolute": int(v)})
             time.sleep(0.7)
-        leds.light(side)
+        leds.light(cfg.get("led", "top"))
         time.sleep(C.LED_SETTLE_S)
         img = cam.capture()
         leds.all_off()
@@ -84,14 +85,53 @@ def focus_sweep(cam, leds, side, start, stop, step):
     print(f"\n  BEST {key} = {best[0]}  -> put this value in config.py CAMERAS['{side}']")
 
 
+def list_cameras():
+    from camera.picam_camera import list_csi_cameras
+    info = list_csi_cameras()
+    if not info:
+        print("No CSI cameras found (or picamera2 not installed). Check cables, then run:\n"
+              "  rpicam-hello --list-cameras")
+    for i, c in enumerate(info):
+        print(f"  camera_num {i}: model={c.get('Model')}  location={c.get('Location')}  "
+              f"id={c.get('Id')}")
+    for name, cfg in C.CAMERAS.items():
+        print(f"  config: {name:5} -> backend={cfg['backend']} camera_num={cfg.get('camera_num')}")
+
+
+def both_streaming(n=5):
+    """Open and start BOTH cameras simultaneously, grab alternately (Pi 5 dual-CSI check)."""
+    cams = {}
+    try:
+        for name in C.CAMERA_ORDER:
+            cams[name] = create_camera(name, C.CAMERAS[name])
+            cams[name].open()
+        print("Both cameras opened and streaming at the same time.")
+        for i in range(n):
+            for name, cam in cams.items():
+                t0 = time.perf_counter()
+                img = cam.capture()
+                print(f"  {name}: {img.shape[1]}x{img.shape[0]} in {time.perf_counter() - t0:.2f} s")
+        print("RESULT: PASS (both cameras usable in one session)")
+    finally:
+        for cam in cams.values():
+            cam.close()
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--side", choices=["top", "bottom", "both"], default="both")
+    ap.add_argument("--camera", choices=list(C.CAMERAS) + ["both"], default="both")
     ap.add_argument("-n", type=int, default=10)
-    ap.add_argument("--list", action="store_true", help="list v4l2 controls (USB camera)")
+    ap.add_argument("--list", action="store_true", help="list detected cameras")
+    ap.add_argument("--both-streaming", action="store_true")
     ap.add_argument("--focus-sweep", nargs=3, type=float, metavar=("START", "STOP", "STEP"))
     args = ap.parse_args()
-    sides = ["top", "bottom"] if args.side == "both" else [args.side]
+    if args.list:
+        list_cameras()
+        return
+    if args.both_streaming:
+        both_streaming()
+        return
+    sides = list(C.CAMERA_ORDER) if args.camera == "both" else [args.camera]
     with LedController(C.LIGHTING) as leds:
         for side in sides:
             print(f"\n=== {side.upper()} camera: {C.CAMERAS[side]['backend']} ===")
@@ -100,9 +140,6 @@ def main():
             cam.open()
             print(f"  opened in {time.perf_counter() - t0:.1f} s")
             try:
-                if args.list and C.CAMERAS[side]["backend"] == "uvc":
-                    from camera.uvc_camera import read_v4l2_controls
-                    print(read_v4l2_controls(cam.device))
                 if args.focus_sweep:
                     focus_sweep(cam, leds, side, *args.focus_sweep)
                 else:

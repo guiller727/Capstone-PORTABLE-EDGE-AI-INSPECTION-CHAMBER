@@ -13,4 +13,5 @@ spidev
 psutil
 scipy
 pillow
+pyyaml
 pytest
