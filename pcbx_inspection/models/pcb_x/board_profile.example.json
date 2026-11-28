@@ -1,0 +1,115 @@
+{
+  "_comment": "EXAMPLE ONLY - positions estimated from a phone photo. Recreate with tools/build_board_profile.py on your chamber images; then rename to board_profile.json.",
+  "board": "PCB X",
+  "sides": {
+    "top": {
+      "min_markers": 1,
+      "markers": [
+        {
+          "name": "sharp_logo",
+          "type": "template",
+          "x_mm": 28.5,
+          "y_mm": 41.5,
+          "w_mm": 9.0,
+          "h_mm": 3.0,
+          "template": "templates/top_sharp_logo.png",
+          "min_score": 0.6,
+          "search_mm": 4.0
+        },
+        {
+          "name": "part_number_QPWBP0335PFZZ",
+          "type": "template",
+          "x_mm": 47.0,
+          "y_mm": 42.0,
+          "w_mm": 16.0,
+          "h_mm": 2.5,
+          "template": "templates/top_part_number.png",
+          "min_score": 0.6,
+          "search_mm": 4.0
+        }
+      ],
+      "fiducials_mm": [
+        [
+          4.0,
+          4.0,
+          3.2
+        ],
+        [
+          111.0,
+          4.0,
+          3.2
+        ],
+        [
+          4.0,
+          41.0,
+          3.2
+        ],
+        [
+          111.0,
+          41.0,
+          3.2
+        ]
+      ],
+      "template": "templates/top_whole.png"
+    },
+    "bottom": {
+      "min_markers": 1,
+      "markers": [
+        {
+          "name": "t1_white_block",
+          "type": "template",
+          "x_mm": 37.5,
+          "y_mm": 17.0,
+          "w_mm": 8.0,
+          "h_mm": 22.0,
+          "template": "templates/bottom_t1_block.png",
+          "min_score": 0.6,
+          "search_mm": 4.0
+        },
+        {
+          "name": "t1_label",
+          "type": "template",
+          "x_mm": 37.5,
+          "y_mm": 3.5,
+          "w_mm": 5.0,
+          "h_mm": 3.0,
+          "template": "templates/bottom_t1_label.png",
+          "min_score": 0.6,
+          "search_mm": 4.0
+        },
+        {
+          "name": "barcode",
+          "type": "barcode",
+          "x_mm": 37.5,
+          "y_mm": 17.0,
+          "w_mm": 8.0,
+          "h_mm": 22.0,
+          "search_mm": 3.0
+        }
+      ],
+      "fiducials_mm": [
+        [
+          4.0,
+          4.0,
+          3.2
+        ],
+        [
+          111.0,
+          4.0,
+          3.2
+        ],
+        [
+          4.0,
+          41.0,
+          3.2
+        ],
+        [
+          111.0,
+          41.0,
+          3.2
+        ]
+      ],
+      "template": "templates/bottom_whole.png"
+    }
+  }
+}

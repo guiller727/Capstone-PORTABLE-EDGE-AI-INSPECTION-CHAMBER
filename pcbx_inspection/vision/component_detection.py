@@ -36,23 +36,37 @@ class Detection:
         return asdict(self)
 
 
+class ModelLoadError(RuntimeError):
+    """Model file missing, unreadable, or not matching the profile's classes."""
+
+
 class Detector:
+    """Loads .pt or NCNN (or any Ultralytics format) and checks it BEFORE use:
+    file present, loads without error, detection task, class list identical
+    (same names, same order) to the profile's metadata.json."""
+
     def __init__(self, model_path: Path, imgsz, expected_classes=None,
                  iou: float = 0.5, max_det: int = 300):
-        from ultralytics import YOLO
         model_path = Path(model_path)
         if not model_path.exists():
-            raise FileNotFoundError(f"Model not found: {model_path}. Copy the exported "
-                                    "*_ncnn_model folder into models/ (see models/README.md)")
-        self.model = YOLO(str(model_path), task="detect")
+            raise ModelLoadError(f"Model not found: {model_path}. Copy the trained model into "
+                                 "the profile folder (docs/MODEL_INTEGRATION.md)")
+        try:
+            from ultralytics import YOLO
+            self.model = YOLO(str(model_path), task="detect")
+        except Exception as exc:
+            raise ModelLoadError(f"Could not load {model_path.name}: {exc}. Was it trained/"
+                                 "exported with the same ultralytics version?") from exc
         self.imgsz = list(imgsz) if isinstance(imgsz, (list, tuple)) else int(imgsz)
         self.iou, self.max_det = iou, max_det
         self.names = self.model.names            # {id: name}
         if expected_classes:
             got = [self.names[i] for i in sorted(self.names)]
             if got != list(expected_classes):
-                raise ValueError(f"Model classes {got} differ from config {expected_classes}."
-                                 " You probably loaded the wrong side's model.")
+                raise ModelLoadError(f"Model classes {got} differ from profile classes "
+                                     f"{list(expected_classes)} - wrong side's model, or "
+                                     "metadata.json not updated after retraining.")
+        self.path = model_path
         self.last_ms = 0.0
 
     def warmup(self, shape):

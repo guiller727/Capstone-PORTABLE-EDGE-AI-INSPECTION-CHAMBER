@@ -7,6 +7,11 @@ finds it deterministically, with sub-pixel accuracy, without labelling, and
 is easy to explain in the defense. YOLO boxes are only ~1-2 px accurate.
 
 All positions here are in CANVAS pixels; conversion to mm uses PX_PER_MM.
+
+V2 / PCB X: the board has no dedicated fiducial dots, but its four MOUNTING
+HOLES (round, at the corners, same position on every unit, visible from both
+sides) serve the same purpose. They are 180-deg symmetric, so they give
+POSITION but not orientation - orientation comes from vision/identification.py.
 """
 import cv2
 import numpy as np
@@ -36,7 +41,7 @@ def _blobs(gray_roi: np.ndarray, d_min_px: float, d_max_px: float):
             yield m["m10"] / m["m00"], m["m01"] / m["m00"], d, circ
 
 
-def find_candidates(gray: np.ndarray, px_per_mm: float, d_min_mm=0.6, d_max_mm=3.0):
+def find_candidates(gray: np.ndarray, px_per_mm: float, d_min_mm=0.6, d_max_mm=5.0):
     """Search the WHOLE canvas (used once when building the board profile)."""
     out = []
     for cx, cy, d, circ in _blobs(gray, d_min_mm * px_per_mm, d_max_mm * px_per_mm):

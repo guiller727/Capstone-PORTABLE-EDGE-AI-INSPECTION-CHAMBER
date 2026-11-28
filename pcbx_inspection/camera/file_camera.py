@@ -21,13 +21,14 @@ class FileCamera(BaseCamera):
         folder = Path(self.cfg.get("simulate_folder", f"sim_images/{self.name}"))
         if not folder.is_absolute():
             folder = PROJECT_DIR / folder
-        self.files = sorted(p for p in folder.glob("*") if p.suffix.lower() in IMG_EXT)
+        self.files = sorted(p for p in folder.glob("*") if p.suffix.lower() in IMG_EXT) \
+            if folder.is_dir() else []
         if not self.files:
             raise CameraError(f"No images in {folder} for simulated {self.name} camera")
         self.index = 0
         self.is_open = True
 
-    def capture(self) -> np.ndarray:
+    def capture(self, fresh: bool = True) -> np.ndarray:
         path = self.files[self.index % len(self.files)]
         self.index += 1
         img = cv2.imread(str(path), cv2.IMREAD_COLOR)

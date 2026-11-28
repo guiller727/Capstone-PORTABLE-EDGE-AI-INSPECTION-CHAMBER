@@ -6,10 +6,10 @@ Print a checkerboard (9 x 6 INNER corners, 8 mm squares - fits the ~140 x 80 mm
 view) and glue it flat on stiff card. Place it on the tray at the board's
 height. Capture 15-20 images: centre, corners, edges, slightly tilted.
 
-  python tools/calibrate_camera.py --side bottom --capture 20
-  python tools/calibrate_camera.py --side top --folder my_checkerboard_photos/
+  python tools/calibrate_camera.py --camera lower --capture 20
+  python tools/calibrate_camera.py --camera upper --folder my_checkerboard_photos/
 
-Output: references/calibration/<side>_camera.json  (+ undistorted preview).
+Output: references/calibration/<camera>_camera.json  (+ undistorted preview).
 PASS criteria: RMS reprojection error < 0.5 px (< 1.0 px acceptable for webcams);
 straight board edges look straight in the preview near the image corners.
 """
@@ -37,7 +37,7 @@ def capture_images(side, n):
         try:
             for i in range(n):
                 input(f"[{i + 1}/{n}] move the checkerboard, then press Enter...")
-                leds.light(side)
+                leds.light(C.CAMERAS[side].get("led", "top"))
                 time.sleep(C.LED_SETTLE_S)
                 img = cam.capture()
                 leds.all_off()
@@ -58,7 +58,7 @@ PATTERN = (9, 6)
 def main():
     global PATTERN
     ap = argparse.ArgumentParser()
-    ap.add_argument("--side", choices=["top", "bottom"], required=True)
+    ap.add_argument("--camera", dest="side", choices=list(C.CAMERAS), required=True)
     ap.add_argument("--capture", type=int, help="capture N images now")
     ap.add_argument("--folder", type=Path, help="use existing images")
     ap.add_argument("--cols", type=int, default=9)

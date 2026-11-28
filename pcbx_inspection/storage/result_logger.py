@@ -11,10 +11,12 @@ import logging
 import logging.handlers
 from pathlib import Path
 
+# top = FRONT (Side A), bottom = BACK (Side B)
 CSV_FIELDS = ["board_id", "timestamp", "verdict", "operator_decision", "top_verdict",
               "bottom_verdict", "n_fail", "n_review", "flagged", "total_s",
               "capture_s", "inference_ms_top", "inference_ms_bottom",
-              "top_alignment", "bottom_alignment", "folder"]
+              "top_alignment", "bottom_alignment", "top_camera", "bottom_camera",
+              "mode", "profile", "golden_revision", "golden_hash", "notes", "folder"]
 
 
 def setup_app_logging(logs_dir: Path, level=logging.INFO):
@@ -37,6 +39,11 @@ class ResultLogger:
         self.logs_dir = Path(logs_dir)
         self.csv_path = self.logs_dir / "results.csv"
         self.logs_dir.mkdir(parents=True, exist_ok=True)
+        if self.csv_path.exists():
+            with open(self.csv_path, newline="") as f:
+                header = next(csv.reader(f), [])
+            if header != CSV_FIELDS:            # V1 file: keep it, start a new one
+                self.csv_path.rename(self.logs_dir / "results_v1.csv")
         if not self.csv_path.exists():
             with open(self.csv_path, "w", newline="") as f:
                 csv.DictWriter(f, CSV_FIELDS).writeheader()
@@ -48,6 +55,18 @@ class ResultLogger:
         row["folder"] = str(folder)
         with open(self.csv_path, "a", newline="") as f:
             csv.DictWriter(f, CSV_FIELDS).writerow(row)
+
+    def read_rows(self, limit=500):
+        """Most recent rows first (for the History window). Later rows for the
+        same board (operator decision) replace earlier ones."""
+        if not self.csv_path.exists():
+            return []
+        with open(self.csv_path, newline="") as f:
+            rows = list(csv.DictReader(f))
+        latest = {}
+        for r in rows:
+            latest[r["board_id"]] = r
+        return list(reversed(list(latest.values())))[:limit]
 
     def set_operator_decision(self, folder: Path, decision: str):
         """Store the operator's final call for a REVIEW board (keeps CSV append-only:

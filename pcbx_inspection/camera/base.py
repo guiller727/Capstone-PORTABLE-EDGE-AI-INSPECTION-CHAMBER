@@ -21,8 +21,10 @@ class BaseCamera(ABC):
         """Open the device once, apply locked exposure/focus/white balance."""
 
     @abstractmethod
-    def capture(self) -> np.ndarray:
-        """Return a FRESH frame (taken after the LEDs were switched on)."""
+    def capture(self, fresh: bool = True) -> np.ndarray:
+        """Return a frame. fresh=True discards queued frames first so the image
+        was exposed AFTER the LEDs switched on (inspection). fresh=False is
+        used for the low-rate live preview."""
 
     @abstractmethod
     def close(self) -> None:

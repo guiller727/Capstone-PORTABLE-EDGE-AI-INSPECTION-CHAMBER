@@ -1,5 +1,9 @@
 <!--
-  Label Studio labeling config for the BOTTOM side (SMD parts).
+  Label Studio labeling config for the BACK side (Side B, "bottom" dataset, SMD parts).
+  PCB X back parts (21): resistors R1 R3 R4 R6 R9 R10 RFB1 RFB2 RSENSE (9),
+  SMD capacitors C4 C7 C8 C11 (4), diodes D1 D2 D3 D4 D5 D7 D8 (7; D8 is the large
+  DPAK-style package - label it diode too), IC1 (ic8, SO-8). Through-hole solder
+  joints of front parts are NOT labelled.
   Zoom in (mouse wheel) for small parts; draw the box tightly around the
   component BODY including its solder terminations, not the pads.
 -->

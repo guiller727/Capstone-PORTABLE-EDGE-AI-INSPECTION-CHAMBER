@@ -1,4 +1,38 @@
-# Package D — Testing and validation procedures
+# Package D — Testing and validation procedures (V2)
+
+## V2: the 15 required cases — simulated tests vs. physical validation
+
+**Simulated** = runs anywhere (`python -m pytest -q tests`), synthetic board
+images, file cameras, fake detectors; proves the *logic*. **Physical** = must
+be repeated with the real chamber, real PCB X boards and trained models before
+any claim in Chapter 4.
+
+| # | Case | Simulated test (`tests/test_v2_scenarios.py`) | Physical validation |
+|---|---|---|---|
+| 1 | Front identification | `test_01_front_identification_...` | D4: 20 front insertions, `test_alignment.py --expect top` |
+| 2 | Back identification | `test_02_back_identification` | D4: 20 back insertions, `--expect bottom` |
+| 3 | Unknown PCB | `test_03_unknown_pcb_gives_review` | other board / empty tray, `--expect unknown` / `no_board` |
+| 4 | Correct orientation | `test_01_..._04_correct_orientation` | D4 normal set: rotation 0 |
+| 5 | Rotated PCB | `test_05_*` (180°, tilt, 90° in the image), `test_05c` ambiguous → REVIEW | D4 rotated-180 set |
+| 6 | Flipped PCB | `test_06_*` (dual auto-handled, strict mode prompt, flip-mode workflow, FINISH early) | insert boards back-side up in dual mode; flip-mode session |
+| 7 | Missing component | `test_07_missing_component_fail` | D7 boards with a removed part |
+| 8 | Incorrect placement | `test_08_*` (radial and per-axis tolerance) | D7 boards with a part shifted ≥ 1 mm |
+| 9 | Low-confidence detection | `test_09_low_confidence_is_review_not_fail` | review all REVIEW results with the operator |
+| 10 | Invalid golden JSON | `test_10_*` (syntax, values, safe save + backup) | edit in GUI with wrong values → refused |
+| 11 | Missing `.pt` model | `test_11_*` (not ready, fake/empty file rejected) | remove `top/` folder → NOT READY message |
+| 12 | Camera init failure | `test_12_*` (not ready; capture failure → REVIEW) | unplug one ribbon (power off!) → NOT READY |
+| 13 | Front PASS + back PASS | `test_13_...` | known-good boards |
+| 14 | Front FAIL + back PASS | `test_14_...` | defect only on the front |
+| 15 | Front PASS + back REVIEW | `test_15_...` | e.g. extra part placed on the back |
+| — | Combination table | `test_combination_table` | — |
+| — | Live path + logging + report | `test_inspect_logs_record` | D8 |
+| — | GUI (inspect, settings save/refuse, history, report, preview) | `tests/test_gui_smoke.py` (needs a display) | D8 on the touchscreen |
+
+Hardware-only tests (no simulation possible): D1 cameras (incl.
+`test_cameras.py --both-streaming`), D2 LEDs, D3 inputs, D9 performance on the Pi.
+
+---
+
 
 Each test lists: **purpose · setup · procedure · tool · pass criterion ·
 record**. Pass criteria are *suggested* starting points — agree final values
@@ -23,7 +57,7 @@ templates at the end.
 ### D1. Camera test
 * **Purpose:** frames are sharp, correctly exposed and *stable* (no auto-adjustment).
 * **Setup:** final camera height, LEDs connected, known-good board in the nest, drawer closed.
-* **Procedure:** `python tools/test_cameras.py` (10 captures per side); focus sweep if needed.
+* **Procedure:** `python tools/test_cameras.py --list`, `--both-streaming`, then `python tools/test_cameras.py` (10 captures per camera); focus sweep if needed.
 * **Pass:** configured resolution; brightness std < 2.0; sharpness CV < 5 %; capture < 1.0 s/side.
 * **Record:** resolution, exposure/gain/focus values, mean brightness, sharpness, time.
 
@@ -41,10 +75,10 @@ templates at the end.
 * **Purpose:** prove Scenarios A, B, C and the "not PCB X" case.
 * **Procedure:** calibration RMS from `calibrate_camera.py`. Then capture raw images
   (`capture_dataset.py --side both`) in four sets of **≥ 20 insertions**:
-  (A) normal, (B) rotated 180°, (C) flipped, (D) empty tray / other board. For each set:
-  `python tools/test_alignment.py --side top --images <set> --expect ok|wrong_side|unknown_board`
-* **Pass:** calibration RMS < 0.5 px (USB webcam < 1.0 px); A: 100 % `ok`, B: 100 % `ok`
-  with `rot180=True`, C: 100 % `wrong_side`, D: 100 % `no_board`/`unknown_board`;
+  (A) front normal, (B) front rotated 180°, (C) back up (flipped), (D) empty tray / other board. For each set:
+  `python tools/test_alignment.py --camera upper --images <set> --expect top|bottom|unknown|no_board`
+* **Pass:** calibration RMS < 0.5 px; A: 100 % `top`, rotation 0; B: 100 % `top`, rotation 180;
+  C: 100 % `bottom`; D: 100 % `no_board`/`unknown`;
   mean fiducial residual < 0.15 mm; repeatability (std) < 0.10 mm.
 * **Also test:** cover one fiducial with a paper dot → still `ok` (if ≥ 2 visible);
   cover all → `coarse` → board result cannot be PASS (rule S1).
@@ -93,7 +127,7 @@ enough data; still rising → capture more (different boards first). Report the 
 * **System level:** prepare a ground-truth table of **physical test boards** —
   known-good boards and boards with one controlled defect each (missing part,
   shifted part ≥ 1 mm, wrong part, extra part). Capture each 3× into
-  `test_set/top|bottom/` and write `test_set/truth.csv` (`name,expected` with PASS/FAIL).
+  `test_set/upper|lower/` (same file name for each pair; copy `raw_upper.jpg`/`raw_lower.jpg` from `logs/`) and write `test_set/truth.csv` (`name,expected` with PASS/FAIL).
   `python tools/run_offline.py --images test_set --truth test_set/truth.csv`
 * **Report:** the 2 × 3 table (truth PASS/FAIL × system PASS/FAIL/REVIEW), plus
   * **Defect escape rate** = FAIL boards judged PASS ÷ FAIL boards → target **0**.
@@ -124,7 +158,7 @@ enough data; still rising → capture more (different boards first). Report the 
 
 **Alignment test**
 
-| Date | Side | Set (A/B/C/D) | n | ok | rot180 | wrong_side | unknown/no_board | coarse | mean residual mm | max residual mm |
+| Date | Camera | Set (A/B/C/D) | n | top | bottom | rotation ok | unknown/no_board | coarse | mean residual mm | max residual mm |
 |---|---|---|---|---|---|---|---|---|---|---|
 
 **Decision test**

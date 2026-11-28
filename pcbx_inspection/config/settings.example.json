@@ -1,0 +1,10 @@
+{
+  "ACTIVE_PROFILE": "pcb_x",
+  "INSPECTION_MODE": "dual",
+  "FLIP_CAMERA": "upper",
+  "ALLOW_FLIPPED_INSERTION": true,
+  "LED_BRIGHTNESS": 0.6,
+  "LED_SETTLE_S": 0.3,
+  "SAVE_RAW_IMAGES": true,
+  "REQUIRE_DOOR_CLOSED": true
+}
